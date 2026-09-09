@@ -207,7 +207,7 @@ end)
 test("Studio client probes flag native TextBounds overflow and do not count unmeasured mock text as validated",function()
 	local Checks=module("src/ReplicatedStorage/Shared/StudioChecks.luau")
 	Mock.studio=true;Mock.server=false
-	local button=Mock.app.lobby.play
+	local button=Mock.app.menuButton
 	button._properties.TextBounds=Vector2.new(999,24)
 	local report=Checks.run(true);eq(report.context,"client");eq(report.stats.textMeasured,1)
 	local found=false

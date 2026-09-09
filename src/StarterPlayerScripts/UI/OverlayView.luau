@@ -6,10 +6,13 @@ local Overlay = {}
 Overlay.__index = Overlay
 function Overlay.new(parent,actions)
 	local self=setmetatable({actions=actions,mode=nil},Overlay)
-	self.root=UI.frame(parent,"Overlay",C.Ink);self.root.Size=UDim2.fromScale(1,1);self.root.BackgroundTransparency=0.18;self.root.ZIndex=100;self.root.Visible=false;self.root.Active=true
-	self.panel=UI.card(self.root,"OverlayPanel",C.Ink)
-	self.heading=UI.text(self.panel,"OverlayHeading","",21,C.Ivory,true)
-	self.close=UI.button(self.panel,"CloseOverlay","×","secondary",function()actions.closeOverlay()end)
+	self.root=UI.frame(parent,"Overlay",C.Ink);self.root.Size=UDim2.fromScale(1,1);self.root.BackgroundTransparency=1;self.root.ZIndex=100;self.root.Visible=false;self.root.Active=false
+	self.panel=UI.card(self.root,"OverlayPanel",C.Ink);self.panel.Active=true
+	self.panel:FindFirstChildOfClass("UIStroke").Thickness=2
+	self.heading=UI.gameText(self.panel,"OverlayHeading","",24,C.Ivory);self.heading.TextScaled=true
+	UI.new("UITextSizeConstraint",self.heading,{MinTextSize=14,MaxTextSize=24})
+	self.close=UI.gameButton(self.panel,"CloseOverlay","×","secondary",function()actions.closeOverlay()end)
+	self.back=UI.gameButton(self.panel,"BackToMenu","←","secondary",actions.backToMenu)
 	self.body=UI.new("ScrollingFrame",self.panel,{Name="Content",BackgroundTransparency=1,BorderSizePixel=0,ScrollBarThickness=3,ScrollBarImageColor3=C.Line,AutomaticCanvasSize=Enum.AutomaticSize.Y,CanvasSize=UDim2.new(),ScrollingDirection=Enum.ScrollingDirection.Y,ClipsDescendants=true})
 	UI.new("UIListLayout",self.body,{Padding=UDim.new(0,12),SortOrder=Enum.SortOrder.LayoutOrder})
 	UI.new("UIPadding",self.body,{PaddingRight=UDim.new(0,6),PaddingBottom=UDim.new(0,16)})
@@ -17,11 +20,11 @@ function Overlay.new(parent,actions)
 end
 function Overlay:resize(w,h)
 	local width=math.min(640,w-32)
-	local height=math.min(600,h-32)
+	local height=math.min(600,h-100)
 	self.width=width-48
-	UI.place(self.panel,(w-width)/2,(h-height)/2,width,height)
-	UI.place(self.heading,24,19,width-104,37);UI.place(self.close,width-66,16,44,44)
-	UI.place(self.body,24,78,width-48,height-100)
+	UI.place(self.panel,(w-width)/2,math.max(84,(h-height)/2),width,height)
+	UI.place(self.back,16,12,44,44);UI.place(self.heading,73,13,width-146,44);UI.place(self.close,width-60,12,44,44)
+	UI.place(self.body,20,72,width-40,height-86)
 end
 function Overlay:clear()
 	for _,child in self.body:GetChildren() do if child:IsA("GuiObject") then child:Destroy() end end
@@ -41,6 +44,7 @@ function Overlay:render(mode,model,t)
 	self.mode=mode;self.root.Visible=mode~=nil
 	if not mode then return end
 	self:clear()
+	self.preferenceButtons={};self.defaultButton=self.close
 	self.body.CanvasPosition=Vector2.zero
 	if mode=="HOW" then
 		self.heading.Text=t("guide_title")
@@ -58,9 +62,35 @@ function Overlay:render(mode,model,t)
 				self.actions.setting(item.setting,if item.setting=="language" then (if current=="zh" then "en" else "zh") else not current)
 			end)
 			toggle.Size=UDim2.fromOffset(108,44);toggle.Position=UDim2.new(1,-122,0,32)
+			self.preferenceButtons[item.setting]=toggle
+		end
+	elseif mode=="STAGES" then
+		self.heading.Text=t("menu_stages")
+		local d=model.directory
+		local queued=d and (d.queuePosition or 0)>0
+		for i,arena in (d and d.arenas)or{}do
+			local main=arena.id=="MAIN"
+			local row=UI.card(self.body,"Stage"..arena.id,C.Panel);row.LayoutOrder=i;row.Size=UDim2.new(1,-4,0,180)
+			local accent=if main then C.Amber else C.Teal
+			local tag=UI.text(row,"Studio","STUDIO 0"..i,11,accent,true);tag.Position=UDim2.fromOffset(16,10);tag.Size=UDim2.new(1,-32,0,20)
+			local title=UI.gameText(row,"StageTitle",t(if main then "main"else"quick"),25,C.Ivory);title.Position=UDim2.fromOffset(16,33);title.Size=UDim2.new(1,-32,0,33)
+			local description=UI.text(row,"Description",t(if main then "main_desc"else"quick_desc"),13,C.Muted);description.Position=UDim2.fromOffset(16,68);description.Size=UDim2.new(1,-32,0,30)
+			local status=UI.text(row,"Status",if arena.available then t("available")else t("playing",{name=arena.name}),12,accent,true);status.Position=UDim2.fromOffset(16,97);status.Size=UDim2.new(1,-32,0,23);status.TextTruncate=Enum.TextTruncate.AtEnd;status.TextWrapped=false
+			local watch=main and not arena.available
+			local button=UI.gameButton(row,"Join"..arena.id,t(if watch then "watch"elseif main then "enter"elseif arena.available then "join_quick"else"queue_quick"),if main then "primary"else"teal",function()
+				if watch then self.actions.watch(arena.id)else self.actions.play(arena.id)end
+			end)
+			button.Position=UDim2.fromOffset(16,126);button.Size=UDim2.new(1,-32,0,44);button.TextSize=16
+			UI.enabled(button,not d.myArena and (watch or(not queued and model.profile.status~="LOADING")))
+			if button.Active and self.defaultButton==self.close then self.defaultButton=button end
+		end
+		if queued then
+			local cancel=UI.gameButton(self.body,"CancelQueue",t("cancel_queue"),"secondary",self.actions.cancelQueue);cancel.Size=UDim2.new(1,-4,0,48);cancel.LayoutOrder=5
 		end
 	elseif mode=="BOARD" then
 		self.heading.Text=t("board")
+		local p=model.profile or{}
+		self:paragraph(t("menu_my_record"),if p.status=="LOADING"then t("loading")else string.format("%s: %s\n%s: %s CR\n%s: %s",t("rep"),Numbers.formatNumber(p.reputation or 0),t("best"),Numbers.formatNumber(math.max(p.bestExtract or 0,p.bestFinal or 0)),t("runs"),tostring(p.runs or 0)),-1,C.Amber)
 		if model.recap and model.directory and not model.directory.myArena then
 			local recap=UI.button(self.body,"LastRecap",t("last_recap"),"secondary",self.actions.showRecap)
 			recap.Size=UDim2.new(1,-4,0,48);recap.LayoutOrder=0
@@ -77,5 +107,8 @@ function Overlay:render(mode,model,t)
 		local stay=UI.button(self.body,"Stay",t("stay"),"primary",self.actions.closeOverlay);stay.Size=UDim2.new(1,-4,0,48);stay.LayoutOrder=2
 		local leave=UI.button(self.body,"ConfirmLeave",t("leave_confirm"),"secondary",self.actions.abort);leave.Size=UDim2.new(1,-4,0,48);leave.LayoutOrder=3
 	end
+end
+function Overlay:focusTarget(setting)
+	return (setting and self.preferenceButtons and self.preferenceButtons[setting])or self.defaultButton or self.close
 end
 return Overlay

@@ -121,35 +121,7 @@ local function inside(child,parent)
 	assert(p.X>=pp.X-1 and p.Y>=pp.Y-1 and p.X+s.X<=pp.X+ps.X+1 and p.Y+s.Y<=pp.Y+ps.Y+1,
 		child.Name.." outside "..parent.Name.." at "..p.X..","..p.Y.." "..s.X.."x"..s.Y)
 end
-local function capture(name)
-	game:GetService("RunService").RenderStepped:Fire(0.016)
-	local entries={}
-	for _,node in Mock.app.root:GetDescendants()do
-		if node:IsA("GuiObject")then
-			local visible=node.Visible
-			local p=node.Parent
-			local clip={0,0,Mock.viewport[1],Mock.viewport[2]}
-			local layer=node.ZIndex
-			while p and p~=Mock.app.root do
-				if p:IsA("GuiObject")then
-					if not p.Visible then visible=false end
-					if p.ClipsDescendants or p:IsA("ScrollingFrame") then
-						local pos,size=p.AbsolutePosition,p.AbsoluteSize
-						clip={math.max(clip[1],pos.X),math.max(clip[2],pos.Y),math.min(clip[3],pos.X+size.X),math.min(clip[4],pos.Y+size.Y)}
-					end
-					if p.Parent==Mock.app.root then layer=p.ZIndex end
-				end
-				p=p.Parent
-			end
-			if visible then
-				local pos,size=node.AbsolutePosition,node.AbsoluteSize
-				local text=if node:IsA("TextLabel")or node:IsA("TextButton")then node.Text else ""
-				table.insert(entries,{name=node.Name,class=node.ClassName,z=layer,clip=clip,rotation=node.Rotation,x=pos.X,y=pos.Y,w=size.X,h=size.Y,bg={node.BackgroundColor3.R,node.BackgroundColor3.G,node.BackgroundColor3.B},alpha=1-node.BackgroundTransparency,text=text,textSize=if text~=""then node.TextSize else 0,color=if text~=""then {node.TextColor3.R,node.TextColor3.G,node.TextColor3.B}else {},align=if text~=""then node.TextXAlignment.Name else "Left"})
-			end
-		end
-	end
-	captureLayout(name,Mock.json({width=Mock.viewport[1],height=Mock.viewport[2],elements=entries}))
-end
+local function capture(name)Mock.captureGUI(Mock.app,name)end
 
 test("actual client entry subscribes before Sync, renders correct spectator controls",function()
 	Mock.client=p3;game:GetService("Players")._properties.LocalPlayer=p3
@@ -187,14 +159,15 @@ test("guide / settings / records open and language toggles without replacing cor
 	eq(Mock.app.overlay.heading.Text,"一份底牌，四次决定。")
 	Mock.app.actions.setting("language","en");Mock.app:showOverlay(nil)
 end)
-test("lobby uses real records, balanced stage cards, scrollable portrait layout",function()
+test("returning to the lounge keeps the menu closed; summoned game cards fit a scrollable menu",function()
 	Mock.app.actions.returnLobby();Mock.advance(0.2)
-	assert(Mock.app.lobbyScroll.Visible);assert(not Mock.app.run.root.Visible)
+	assert(not Mock.app.lobbyScroll.Visible);assert(not Mock.app.run.root.Visible)
+	Mock.app.actions.toggleMenu();assert(Mock.app.lobbyScroll.Visible)
 	for _,size in {{1360,800},{844,390},{390,844},{360,640}}do
 		viewport(size[1],size[2])
 		inside(Mock.app.lobby.play,Mock.app.lobby.root)
-		inside(Mock.app.lobby.main,Mock.app.lobby.root)
-		inside(Mock.app.lobby.quick,Mock.app.lobby.root)
+		inside(Mock.app.lobby.stageTile.root,Mock.app.lobby.root)
+		inside(Mock.app.lobby.watchTile.root,Mock.app.lobby.root)
 	end
 	viewport(1360,800);capture("lobby-desktop")
 	viewport(390,844);capture("lobby-mobile")

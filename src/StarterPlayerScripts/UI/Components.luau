@@ -49,7 +49,7 @@ function UI.button(parent, name, text, style, callback)
 		local color = if active then background:Lerp(C.Ivory, 0.14) else background
 		if UI.reducedMotion then button.BackgroundColor3 = color
 		else TweenService:Create(button, TweenInfo.new(0.12), { BackgroundColor3 = color }):Play() end
-		outline.Color = if active then C.Ivory else (if style == "primary" then C.Amber elseif style == "teal" then C.Teal else C.Line)
+		outline.Color = if active then C.Ivory else (button:GetAttribute("Accent") or (if style == "primary" then C.Amber elseif style == "teal" then C.Teal else C.Line))
 	end
 	button.MouseEnter:Connect(function() focus(true) end)
 	button.MouseLeave:Connect(function() focus(false) end)
@@ -59,6 +59,21 @@ function UI.button(parent, name, text, style, callback)
 		if not button:GetAttribute("Disabled") then UI.click(); callback() end
 	end)
 	return button
+end
+-- Chunky menu controls, separate from the restrained in-run decision HUD.
+function UI.gameButton(parent,name,text,style,callback)
+	local button=UI.button(parent,name,text,style,callback)
+	button.Font=Enum.Font.FredokaOne
+	button.TextSize=19
+	local outline=button:FindFirstChildOfClass("UIStroke")
+	outline.Thickness=2;outline.Transparency=0
+	return button
+end
+function UI.gameText(parent,name,text,size,color)
+	local label=UI.text(parent,name,text,size,color,true)
+	label.Font=Enum.Font.FredokaOne
+	label.TextStrokeColor3=C.Ink;label.TextStrokeTransparency=0
+	return label
 end
 function UI.enabled(button, enabled)
 	button:SetAttribute("Disabled", not enabled)

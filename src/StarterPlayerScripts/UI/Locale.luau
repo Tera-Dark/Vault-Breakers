@@ -2,6 +2,11 @@
 local Locale = {}
 local strings = {
 	en = {
+		menu="MENU", menu_resume="RESUME", menu_play="PLAY", menu_stages="STAGES", menu_watch="SPECTATE",
+		menu_tagline="YOUR VAULT. YOUR CALL.", menu_play_hint="Next available stage", menu_stages_hint="Pick your studio", menu_watch_hint="See the next big decision",
+		menu_two_studios="2 STUDIOS", menu_free="FREE TO PLAY", menu_no_live="No live run yet", menu_waiting="IN QUEUE", menu_queued="QUEUE #{n}",
+		menu_my_record="YOUR RECORD", menu_how="HOW TO PLAY", menu_records="RECORDS", menu_settings="SETTINGS", menu_close_hint="Close this menu anytime. Walk up to a terminal, or jump straight in.",
+		menu_live_short="RUN IS STILL LIVE", menu_live="MENU DOES NOT PAUSE THE RUN", menu_seconds="{n}s · STILL LIVE", queue_explore="You're free to explore. Joining is automatic.",
 		green_room="THE GREEN ROOM", standby="STANDBY", on_air="ON AIR", main="MAIN STAGE", quick="QUICK RUN",
 		hero="KNOW WHEN\nTO LEAVE.", hero_body="Twelve vaults. One unknown claim.\nTake the certainty, or face the next reveal.",
 		play="Start a run", how="How it works", watch="Watch the stage", enter="Take the stage", join_quick="Play quick run", queue_quick="Queue for quick run",
@@ -34,6 +39,11 @@ local strings = {
 		sync_stage="Synchronizing the stage…", sync_stage_body="Waiting for the latest board. Controls will return when it arrives.", loading="Connecting to the studio…", profile_wait="Please wait for your profile and character to be ready.", character_wait="Your character is respawning. Please join again.", last_recap="Review my last run", recap_released="Stage released. Take your time with the recap.", save_delayed="Save delayed. Please stay; retrying.", session_only="SESSION ONLY · This visit will not be saved.", stale_action="The stage has moved on. Your controls have been refreshed.", arena_busy="That stage is occupied. Try the quick run.", already_playing="Finish your current run first.", not_your_turn="This control belongs to the active Breaker.", invalid_action="That action is not available right now.", poll_closed="This poll has ended.", spectators_only="Only spectators can vote.", lifeline_unavailable="The main-stage lever is available once, from round 3.", run_inactive="The stage was released after inactivity. Your previous progress is safe.", run_character_lost="Your character left the stage; this run has ended.", run_respawned="Your run ended when your character respawned.", run_cancelled="Run ended. Your previous progress is safe.",
 	},
 	zh = {
+		menu="菜单", menu_resume="返回游戏", menu_play="开始游戏", menu_stages="选择舞台", menu_watch="观战",
+		menu_tagline="你的底牌，你来决定。", menu_play_hint="加入下一个空闲舞台", menu_stages_hint="选择你的演播室", menu_watch_hint="见证下一次关键决定",
+		menu_two_studios="两座独立舞台", menu_free="免费参赛", menu_no_live="暂时没有正在进行的对局", menu_waiting="正在候场", menu_queued="候场第 {n} 位",
+		menu_my_record="我的纪录", menu_how="怎么玩", menu_records="纪录", menu_settings="设置", menu_close_hint="随时收起菜单，自由走动。也可以走到实体终端参赛。",
+		menu_live_short="对局仍在继续", menu_live="菜单不会暂停对局", menu_seconds="{n} 秒 · 对局继续", queue_explore="可以自由活动，轮到你时自动登台。",
 		green_room="选手备战室", standby="等待开场", on_air="正在播出", main="主舞台", quick="快速场",
 		hero="知道\n何时离场。", hero_body="十二座金库。一份未知底牌。\n接受确定的报价，或迎接下一次揭晓。",
 		play="开始一局", how="了解玩法", watch="观看主舞台", enter="登上主舞台", join_quick="进入快速场", queue_quick="加入快速场队列",

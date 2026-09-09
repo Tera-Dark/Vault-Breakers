@@ -100,6 +100,7 @@ local function inherits(class,target)
 	while API.classes[class] do if class==target then return true end;class=API.classes[class].super end;return false
 end
 local function default(object,key,kind)
+	if key=="TextStrokeTransparency" then return 1 end
 	if key=="Name" then return object._class end
 	if key=="Visible" or key=="Enabled" then return true end
 	if key=="Health" then return 100 end
@@ -314,7 +315,7 @@ function Mock.player(id,name)
 	local p=Instance.new("Player");p.Name=name;p._properties.UserId=id;p._properties.DisplayName=name
 	local character=Instance.new("Model");character.Name=name.."Character";character.Parent=workspace
 	local humanoid=Instance.new("Humanoid");humanoid.Name="Humanoid";humanoid.Parent=character
-	local root=Instance.new("Part");root.Name="HumanoidRootPart";root.Parent=character;character.PrimaryPart=root
+	local root=Instance.new("Part");root.Name="HumanoidRootPart";root.Transparency=1;root.Parent=character;character.PrimaryPart=root
 	p._properties.Character=character
 	local gui=Instance.new("PlayerGui");gui.Name="PlayerGui";gui.Parent=p
 	p.Parent=game:GetService("Players")
@@ -324,9 +325,9 @@ end
 function Mock.source(path,class,name,parent)
 	local object=Instance.new(class);object.Name=name;object._modulePath=path;object.Parent=parent;return object
 end
-function Mock.captureWorld()
+function Mock.captureWorld(root)
 	local result={}
-	for _,p in workspace:GetDescendants()do
+	for _,p in (root or workspace):GetDescendants()do
 		if p:IsA("BasePart")and p.Transparency<0.95 then
 			local r=p.CFrame.r;local v=p.Position
 			table.insert(result,{name=p:GetFullName(),size={p.Size.X,p.Size.Y,p.Size.Z},matrix={r[1],r[2],r[3],v.X,r[4],r[5],r[6],v.Y,r[7],r[8],r[9],v.Z},color={p.Color.R,p.Color.G,p.Color.B},shape=if p:IsA("Part")then p.Shape.Name else "Block",material=if p.Material then p.Material.Name else "Plastic",alpha=1-p.Transparency})

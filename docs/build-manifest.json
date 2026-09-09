@@ -3,7 +3,7 @@
   "builder": "scripts/build-place.py",
   "instances": 48,
   "scriptCount": 34,
-  "sha256": "ae09bceb19267a9af9b741514c435ace91de62e258e2683defb5c85af4487576",
+  "sha256": "a2f81cfd0a76341f851cab084705d4020931119b698f522171dd5582e6dc721d",
   "studioValidated": false,
   "sources": {
     "src/ReplicatedStorage/Config/AssetConfig.luau": "b126e430e102e33a6dd492e7c2756ba8c0474696b9ffade9cb42196379070328",
@@ -27,18 +27,18 @@
     "src/ServerScriptService/Services/PlayerDataService.luau": "8d7bf000b5ba62522bb1060a57d677568e75efebd70bd280f5295cb1ddcf66e9",
     "src/ServerScriptService/Services/QueueService.luau": "16a5e3408f77dfe40c7b519dd8d35d26cb283088fc1e66cf85766e6e928ec4e2",
     "src/ServerScriptService/Services/RateLimiter.luau": "abc6b5d791c181c5c3a64f4a6cf97b012fe89696e11ab408052cd715a99db037",
-    "src/StarterPlayerScripts/ClientMain.client.luau": "0ed143e9542edafd260044e8f7cce4bb9d729913c1c621ecfdaef59e21b89348",
+    "src/StarterPlayerScripts/ClientMain.client.luau": "cf718bef1b87a74430c2a436e55975f27e76a30d89684c2ffb42f6e84e0a10e9",
     "src/StarterPlayerScripts/Controllers/AudiovisualController.luau": "f21fbbed48780be02369635169a446785aef104106a215ce17e107929f0f587a",
     "src/StarterPlayerScripts/Controllers/CameraController.luau": "94286c6cabf7223956111ac92bc0ab1f62e6192c56f2b5ea15b65eb5ecc8095d",
     "src/StarterPlayerScripts/Controllers/ClientState.luau": "0516f82c779f14f7156241237fb6d218ab41d2a7f95a6319a6ae7d492fafcc80",
     "src/StarterPlayerScripts/Controllers/PromptController.luau": "113e05bcd0d1cb8fdce2115cd9bf74b434895977cdfbc78e1d42da6ffb4e0dd2",
-    "src/StarterPlayerScripts/UI/App.luau": "9edbe086e37244a69f15aad8e89dc9ce00228a07e2b1d1bfd470e43d200f05eb",
-    "src/StarterPlayerScripts/UI/Components.luau": "de304b948ddac70dd97a82f20704ba751b56fd1370425def415cefee97e33fde",
-    "src/StarterPlayerScripts/UI/LobbyView.luau": "b0ba87e3d9bf901b4e16f42d9e8793a06e1050f0cd1e4622eff446e7dc9e0a2b",
-    "src/StarterPlayerScripts/UI/Locale.luau": "bc861a3270f64e6d26cf6b6fdf76c101222d9405504dc153a2b5a6b07540e53b",
-    "src/StarterPlayerScripts/UI/OverlayView.luau": "94407525b36c0b248d673f69044f1f15d519659c342ed38ee043bd03eb9df592",
+    "src/StarterPlayerScripts/UI/App.luau": "79b1704d7c5f04fa469d7da4fcc41d84d15b9dcd5d68aa60191365fa99e92ca7",
+    "src/StarterPlayerScripts/UI/Components.luau": "d35a25d243db0fa8e3da57838853d61ab42c25fd12c28653a71ee509e826efc6",
+    "src/StarterPlayerScripts/UI/LobbyView.luau": "6dce11ce16db93a0db365742f74edf92b085c6d47e070f970634ab9b3aff2d5b",
+    "src/StarterPlayerScripts/UI/Locale.luau": "366f303ec190ba9852e25bf9a0bd5d404fba368bb0c0764d765d468b7dd800fe",
+    "src/StarterPlayerScripts/UI/OverlayView.luau": "da0b66f580ced1bf16267cbb3c1122142a14e9874136dd79442fc43970fb1c93",
     "src/StarterPlayerScripts/UI/ResultView.luau": "f963ff990c62551e51524f7aa207a1d1cddd6711a50970795c832eeed01c95ab",
     "src/StarterPlayerScripts/UI/RunView.luau": "de2a039b2bc71689e00ac3a5d4b8679d3c086738d62dc2daefac15d00de24a8b",
-    "src/StarterPlayerScripts/UI/VaultPreview.luau": "ecca9a3669ccb9f163c353df258b64da41ffe9d39e99719d5104764cd96c770c"
+    "src/StarterPlayerScripts/UI/VaultPreview.luau": "3f020418a080ad096d4e573c072d9c1ab2ea6363ced2f046d95eb3e066749f98"
   }
 }
