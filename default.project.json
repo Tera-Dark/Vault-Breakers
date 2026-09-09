@@ -1,0 +1,27 @@
+{
+  "name": "Vault Breakers",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "VaultBreakers": {
+        "$path": "src/ReplicatedStorage"
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "VaultBreakers": {
+        "$path": "src/ServerScriptService"
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "VaultBreakers": {
+          "$path": "src/StarterPlayerScripts"
+        }
+      }
+    }
+  }
+}

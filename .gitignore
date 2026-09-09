@@ -1,0 +1,15 @@
+# Studio temporary & auto-save files
+*.rbxlx
+*.rbxmx
+*.lock
+auto-saves/
+
+# Logs & System
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# IDE & Tooling
+.vscode/
+.idea/
