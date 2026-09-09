@@ -1,112 +1,137 @@
-# 🏆 Vault Breakers (金库之夜 / THE VAULT)
+# VAULT BREAKERS
 
-> **地下金库 × 真人秀演播舞台 × 高风险极限决断博弈**  
-> *"十秒读秒，两个按钮。拿钱走人，还是赌上一切翻倍？一人进，亿万出。"*
+**一份秘密底牌，四次离场机会。** 以不确定性、观众压力和取舍为核心的 Roblox 多人演播室游戏。
 
----
+本轮优化保留 v0.3 的产品方向，重做了状态机、双舞台、金库模型、客户端 UI 与结算链路。**不是下注游戏：开门是在排除金额，不是在领取奖励。** Credits 仅为虚拟进度，没有现金兑换、押注预测或付费胜率道具。
 
-## 📖 项目简介 (Overview)
+- [中文交付说明与视觉检查](docs/交付说明.md)
+- [Studio 启动、发布与手动验收](docs/STUDIO_QA.md)
+- [设计与技术说明](docs/DESIGN.md)
+- [美术、音效与上传说明](art/README.md)
+- 原始需求：[最终开发 PRD v0.3](Vault%20Breakers%20最终开发%20PRD%20v0.3.md)
 
-**Vault Breakers** 是一款基于 Roblox 平台的沉浸式高奢真人秀博弈游戏（灵感源于经典美式娱乐节目《Deal or No Deal》与高压心战决策）。
+## 先运行
 
-游戏采用**双空间宏大架构**：
-1. **美式选手备战大厅 (Contestant Holding Lounge / Green Room)**：可容纳数十人的美式演播厅后台，配备全景落地观赛窗、真皮软包沙发组、茶歇吧台 (Craft Service)、特权黑市商城、储物背包与荣耀排行榜。
-2. **正式节目演播大厅 (The Vault Stage Arena)**：由 12 座重型精钢防盗门环列而成的聚光灯舞台，配备顶棚演播桁架聚光灯、Curator 巨型导播屏以及实体观众公投紧急操纵杆。
+1. 用 Roblox Studio 打开仓库根目录的 **`VaultBreakers.rbxl`**。
+2. 点击 **Play**。场景由服务器脚本在运行时生成；编辑态的空场景是预期行为。
+3. 从休息室选择「开始一局」，走近金库领取底牌，再开启其他金库排除金额。
+4. 多人检查请使用 Studio 的 **Server & Clients / 本地服务器**，先开 3 个客户端。
 
----
+**当前包已重新生成，并核对了 34 个嵌入源码与项目路径。但本环境没有 Roblox Studio，尚未验证原生打开、渲染、物理、真机输入或线上存档。发布前请完成 [Studio QA](docs/STUDIO_QA.md)。** 无需任何外部资产即可运行逻辑和场景；完整原创音效需由体验所有者上传。
 
-## 🎮 核心玩法闭环 (Core Gameplay Loop)
+`Place1.rbxl` 是原仓库的旧设计文档容器，保留不动，**不是本轮运行入口**。
 
-```
-[选手大厅备战] ➔ [红毯闸门 / 一键登台] ➔ [挑选锁定 1 座底牌金库]
-       │
-       ▼
-[逐轮破译淘汰其余金库] ➔ [Curator 动态现金报价提议]
-       │
-       ├─► [拿钱走人 (EXTRACT)] ➔ 锁定落袋 + 结算连胜 Heat
-       │
-       ├─► [继续博弈 (PUSH)] ➔ 进入下一轮极限攻防
-       │
-       └─► [犹豫不决？] ➔ 拉下中央操纵杆 ➔ 全服观众 10 秒紧急公投
-       │
-       ▼
-[最终轮：保留底牌 VS 交换最后金库] ➔ [震撼揭晓 + 评级复盘]
-```
+## 一局的规则
 
-* **12 档奖池金库**：`¥1`、`¥5`、`¥10`、`¥25`、`¥50`、`¥100`、`¥250`、`¥500`、`¥1,000`、`¥2,500`、`¥5,000`、`¥10,000`。
-* **Curator 动态算法**：严格根据剩余奖池数学期望（EV）、极差方差、玩家剩余回合与风险系数动态报价。
-* **决断质量评级**：经 10,000 次蒙特卡洛算法调优，给出 `ELITE EXTRACT`、`DARING PUSH` 或 `GREEDY BLUNDER` 终局复盘评级。
+- 奖池：`1 / 5 / 10 / 25 / 50 / 100 / 250 / 500 / 1,000 / 2,500 / 5,000 / 10,000`。
+- 12 个秘密打乱的金库，先 Claim 一份底牌，再按 **4 / 3 / 2 / 1** 排除其余金库。
+- 剩余数量：**12 → 8 → 5 → 3 → 2**。补齐最后一次排除，保证 KEEP / SWAP 真正可达。
+- 四次报价：前三轮为剩余 EV × `0.45 / 0.70 / 0.90`；最后一次为 `0.84–0.96`；叠加 ±3% 波动。
+- 每次报价 18 秒，最后 5 秒提供克制的视觉/音效提醒；超时自动 PUSH。
+- 四次都 PUSH 后，15 秒 KEEP / SWAP；超时默认 KEEP。自动选择不加减决策质量分。
+- Main Stage 支持免费 EXTRACT / PUSH 意见、最终 KEEP / SWAP 意见；第 3 轮起可使用一次 **实体红色操纵杆**，暂停报价并进行 10 秒 Audience Lifeline。
+- Quick Arena 独立运行，无观众投票/求助。两场可以同时开局；队列按偏好与先来先到分配，重开不插队。
+- Heat 由决策时的信息评分驱动，不由最后开出的运气决定；本局倍率在开局时锁定。
+- 结算后最多 14 秒释放舞台。选手的复盘可以继续看，不会占用舞台；本次会话内可从纪录面板重新打开最近一局。
 
----
+## 操作
 
-## 🏗️ 架构与工程目录 (Project Architecture)
+| 输入 | 移动与实体交互 | 报价 / 最终选择 |
+|---|---|---|
+| 键鼠 | Roblox 默认移动；靠近后按 E | 点击按钮，或 1 / 2 |
+| 触屏 | 默认摇杆；触摸就近提示 | 点击两枚大按钮；顶栏返回箭头退出/返回 |
+| 手柄 | 默认移动；R2 触发实体提示 | X / Y 选择左 / 右；B 关闭弹窗 |
 
-项目采用现代标准 **Rojo 7.x** 架构，严格遵循 Luau 强类型（`--!strict`）规范：
+手柄的实体交互刻意不占用 X，避免拉求助杆时误选 EXTRACT。实际手柄焦点、移动摇杆和安全区仍须真机验收。
+
+界面根据 Roblox 语言初选中文/英文；设置可切换语言、声音和减少动态效果。**设置与最近一局复盘仅保留在当前客户端会话中**，不是跨设备存档。
+
+## 项目结构
 
 ```text
-Vault Breakers/
-├── default.project.json          # Rojo 映射配置文件
-├── VaultBreakers.rbxl            # 可直接双击打开运行的 Roblox 工程文件
-├── README.md                     # 项目开发与架构文档
-├── .gitignore                    # Git 忽略配置
-└── src/
-    ├── ReplicatedStorage/        # 双端共享配置、协议与算法
-    │   ├── Config/
-    │   │   ├── GameConfig.luau   # 轮次结构、时钟阈值与核心参数
-    │   │   ├── RewardPool.luau   # 12 档奖金定义与千分位格式化
-    │   │   └── OfferAlgorithm.luau # Curator 现金报价算法公式
-    │   ├── Network/
-    │   │   └── Remotes.luau      # 全套 RemoteEvents 网络通信驱动
-    │   └── Shared/
-    │       ├── MatchState.luau   # 单局严格有限状态机定义
-    │       ├── Types.luau        # 全局 Luau 强类型与数据结构
-    │       └── DecisionQuality.luau # 风险调整价值评级算法
-    │
-    ├── ServerScriptService/      # 服务端核心逻辑与数据存储
-    │   ├── Main.server.luau      # 服务端初始化入口与流程驱动
-    │   ├── Core/
-    │   │   ├── MatchManager.luau # 单局状态机核心驱动控制器
-    │   │   └── StageBuilder.luau # 3D 演播大厅与美式选手大厅程序化构建
-    │   └── Services/
-    │       ├── PlayerDataService.luau # 玩家持久化数据、筹码与商城系统
-    │       ├── CuratorService.luau    # 主持人动态情绪台词系统
-    │       ├── DecisionService.luau   # 连胜加成系数 (🔥 x1.0~x2.0)
-    │       ├── AudienceService.luau   # 观众实时公投与 10s 操纵杆求助
-    │       └── LeaderboardService.luau# 百万金库提现榜与决断连击榜
-    │
-    └── StarterPlayerScripts/     # 客户端表现层与交互界面
-        ├── ClientMain.client.luau # 客户端入口：金库特刊、侧边栏、背包、商店、决策HUD
-        └── Controllers/
-            └── AudiovisualController.luau # 聚光灯、警报光影与视听音效控制器
+src/
+  ReplicatedStorage/
+    Config/                    规则、报价、奖池、色板、资产入口
+    Network/Remotes.luau       5 个服务器事件
+    Shared/                    公开类型、决策评分、档案迁移、只读 Studio 检查
+  ServerScriptService/
+    Main.server.luau           身份、阶段、距离、队列、同步的权威适配层
+    Core/RunEngine.luau        无 Instance / task 的可测试状态机
+    Core/StageBuilder.luau     主舞台、快速场、休息室、实体控制台
+    Core/VaultModel.luau       中空金库、铰链门、锁栓和手轮组件
+    Services/                 队列、存档、声望 / Heat、真实本服纪录、限流
+  StarterPlayerScripts/
+    ClientMain.client.luau     同步、输入、动作、会话状态
+    Controllers/              客户端状态归并、镜头、提示、声音与轻量演出
+    UI/                       大厅、局内、复盘、帮助、设置、中英文本
+art/                          概念图、矢量标记、6 个原创 WAV
+scripts/                      编译 / 回归、打包、音效生成、离线视觉检查
+tests/                       纯规则与反射约束的 Roblox doubles 测试
 ```
 
----
+### 源码开发与打包
 
-## 🚀 本地开发与运行 (Getting Started)
+推荐在自己的 Studio 环境使用官方 Rojo：
 
-### 方式一：直接在 Roblox Studio 运行（无需任何环境）
-1. 双击打开根目录下的 [`VaultBreakers.rbxl`](./VaultBreakers.rbxl)；
-2. 在 Roblox Studio 工具栏点击 **Play（运行）** 即可立即体验完整大厅与对局玩法！
+```sh
+rojo serve default.project.json
+# 用 Studio 的 Rojo 插件连接，然后停止/重新 Play
+rojo build default.project.json -o VaultBreakers.rbxl
+```
 
-### 方式二：使用 Rojo 进行代码热同步开发
-1. 安装 [Rojo](https://rojo.space/)（推荐 7.x 或以上版本）；
-2. 在项目根目录执行本地服务：
-   ```bash
-   rojo serve
-   ```
-3. 在 Roblox Studio 中打开空工程或 `VaultBreakers.rbxl`，通过 **Rojo 插件** 连接 `localhost:34872` 进行实时增量热同步。
-4. 如需重新打包 `.rbxl` 文件：
-   ```bash
-   rojo build -o VaultBreakers.rbxl
-   ```
+仓库另附 Python 3.10+ 的**限定用途打包器**，不需要下载原生 Rojo。它只支持当前项目的源码文件夹、服务、脚本及 Server RunContext，遇到额外项目属性会报错，而不是悄悄忽略：
 
----
+```sh
+python3 scripts/build-place.py
+python3 scripts/build-place.py --check
+# 可选：输出可读 XML 版供 Studio 打开
+python3 scripts/build-place.py --xml .cache/VaultBreakers.rbxlx
+```
 
-## 📜 规则与安全红线 (Compliance)
-* **纯技术博弈**：所有奖金与筹码均为游戏内虚拟积分数值，严禁任何形式的真钱涉赌。
-* **免费观众公投**：观众投票与求助功能完全向全服玩家免费开放，杜绝以付费撬动公投倾斜。
+Windows 可使用 `python` 或 `py -3` 替代 `python3`。输出为源码型 place，**不是烘焙场景**；运行时模型修改应落在 `StageBuilder` / `VaultModel`，编辑 Play 中的临时实例不会回写源码。
 
----
+### 自动化检查
 
-## 📄 License
-MIT License. 版权所有 © 2026 Vault Breakers Team.
+前置：Node.js 22+、npm；打包与音效检查需要 Python 3.10+。
+
+```sh
+npm ci --prefix scripts --ignore-scripts
+npm test --prefix scripts
+python3 scripts/build-place.py --check
+python3 scripts/generate-audio.py --check
+```
+
+本次本地结果：
+
+- **34** 个生产 Luau 文件编译通过；使用 `luau-web@1.4.0`，不是完整静态类型检查。
+- **21** 组纯规则测试通过，包含 **1,000** 次确定性完整对局。
+- **7** 组纯客户端状态回归：跨事件到达顺序、旧局面、待确认操作与复盘去重。
+- **16** 组集成/布局契约、**17** 组边界回归通过；实际服务端/客户端入口与受控异步存档在 Roblox doubles 中执行。合计 **61** 组回归。
+- 覆盖 1360×800、1024×768、844×390、568×320、390×844、360×640 的主要决策与结算控件边界。
+- 运行时场景构建计数：**2,652 个 BasePart、12 个 Seat、19 盏 Light**。这不是帧率成绩，也不包含玩家角色和客户端预览克隆。
+- 存档故障测试会刻意输出 `[Vault] Save failed / Session lock lost` 等警告；相应测试 PASS 表示预期故障路径得到处理。
+- `npm test` 已包含全部三条检查入口；可单跑 `npm run test:resilience --prefix scripts`。
+
+反射 fixture 约束类、属性和枚举名称；doubles 近似变换与 GUI 坐标。它们不提供真正的 Roblox 物理、文字排版、Tween 帧过程、客户端隔离复制或 DataStore 后端。CI 配置已加入，**尚未在远程 GitHub Actions 中执行**。
+
+## 本次加固：网络、角色与生命周期
+
+- 倒计时以服务端收件时刻为准；边界操作先结算过期阶段，不能在 Heartbeat 之间抢到已过期的报价。
+- 观众回大厅、切场或成为另一场选手时撤回旧票；角色死亡/移除立即释放，不依赖下一次重生。
+- Directory 带序号及场次/阶段，Snapshot 带修订号。等待新局面时显示同步卡，不拿上一局按钮冒充当前操作；未确认动作不会被无关场地的消息解锁。
+- 弹窗/复盘屏蔽物理提示；迟到的镜头、替换的 CurrentCamera、晚出现的提示及属性均有恢复路径。复盘关闭后不会被重复 SYNC 弹回。
+- 每次加入绑定 Player 实例和独立锁 ID。旧加载/保存回调只能清理自己的条目；同服快速重连会有限等待旧会话退役，超限仍安全降级而非强抢档案。
+
+在 **Studio Play** 的服务端和客户端 Command Bar 分别运行以下只读检查，查看场景结构、原生文字边界和固定按钮安全区；它不会写存档，也不替代真人操作验收：
+
+```lua
+require(game.ReplicatedStorage.VaultBreakers.Shared.StudioChecks).run()
+```
+
+## 存档与发布约束
+
+沿用 `VaultBreakers_UserData_v1` / `User_<id>`，使用 UpdateAsync、180 秒会话锁、60 秒自动保存与退出保存。失败加载或异服锁会进入明确标识的临时模式，**不拿默认档案覆盖已有记录**；写入失败会提示延迟并重试，锁丢失则停止写入。
+
+先在独立测试体验检查迁移和断线保存。旧版本使用 SetAsync，不参与新会话锁；发布切换时不要让旧服务器与新服务器同时写同一批存档。更多步骤见 [Studio QA](docs/STUDIO_QA.md)。
+
+建议每服务器 **6–8 人**，但 `RECOMMENDED_MAX_PLAYERS` 只是设计配置，**实际人数上限必须在体验发布设置中填写**。没有接入商城、通行证、库存、扫描器、付费概率优势或真钱兑付；旧库存/通行证原始字段保留在存档根层，不在本版提供使用功能。

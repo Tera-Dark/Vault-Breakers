@@ -1,51 +1,22 @@
 --!strict
 local OfferAlgorithm = {}
+local FACTORS = { 0.45, 0.70, 0.90 }
 
--- PRD 17: Round Factors
-local ROUND_FACTORS: { [number]: number } = {
-	[1] = 0.45,
-	[2] = 0.70,
-	[3] = 0.90,
-}
-
--- PRD 17: Calculate Remaining Expected Value (EV)
-function OfferAlgorithm.calculateEV(remainingRewards: { number }): number
-	if #remainingRewards == 0 then
-		return 0
-	end
+function OfferAlgorithm.calculateEV(values: { number }): number
 	local sum = 0
-	for _, val in ipairs(remainingRewards) do
-		sum += val
-	end
-	return sum / #remainingRewards
+	for _, value in values do sum += value end
+	return if #values > 0 then sum / #values else 0
 end
 
--- PRD 17: Calculate Offer for the given round
-function OfferAlgorithm.calculateOffer(roundIndex: number, remainingRewards: { number }): (number, number)
-	local ev = OfferAlgorithm.calculateEV(remainingRewards)
-	local factor: number
-
-	if roundIndex >= 1 and roundIndex <= 3 then
-		factor = ROUND_FACTORS[roundIndex]
-	else
-		-- Final round factor: 0.84 - 0.96 based on variance/randomness
-		factor = math.random(84, 96) / 100
-	end
-
-	-- Variation: Random(0.97 - 1.03)
-	local variation = math.random(970, 1030) / 1000
-	local rawOffer = ev * factor * variation
-
-	-- Clamp offer within reasonable boundaries (at least 1, below highest remaining)
-	local maxReward = 0
-	for _, val in ipairs(remainingRewards) do
-		if val > maxReward then
-			maxReward = val
-		end
-	end
-
-	local finalOffer = math.clamp(math.round(rawOffer), 1, maxReward)
-	return finalOffer, ev
+function OfferAlgorithm.calculateOffer(round: number, values: { number }, random: ((number, number) -> number)?): (number, number)
+	if #values == 0 then return 0, 0 end
+	local rng = random or math.random
+	local ev = OfferAlgorithm.calculateEV(values)
+	local factor = FACTORS[round] or (rng(84, 96) / 100)
+	local variation = rng(970, 1030) / 1000
+	local maximum = 1
+	for _, value in values do maximum = math.max(maximum, value) end
+	return math.clamp(math.floor(ev * factor * variation + 0.5), 1, maximum), ev
 end
 
 return OfferAlgorithm

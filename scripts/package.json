@@ -1,0 +1,14 @@
+{
+  "name": "vault-breakers-headless-checks",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node check.mjs && node contract-check.mjs && node contract-check.mjs resilience",
+    "test:core": "node check.mjs",
+    "test:contracts": "node contract-check.mjs && node contract-check.mjs resilience",
+    "test:resilience": "node contract-check.mjs resilience"
+  },
+  "devDependencies": {
+    "luau-web": "1.4.0"
+  }
+}

@@ -1,66 +1,43 @@
 --!strict
-local Types = require(script.Parent.Types)
-
+-- A transparent heuristic, not an objective judgement of a player's risk preference.
+-- ONLY information available at the time of the decision is accepted here.
 local DecisionQuality = {}
 
--- PRD 23-30: Risk-Adjusted Decision Evaluation
-function DecisionQuality.evaluate(
-	decision: Types.PlayerDecisionType,
-	offer: number,
-	ev: number,
-	remainingRewards: { number }
-): Types.DecisionEvaluation
-	local minVal = math.huge
-	local maxVal = -math.huge
-	for _, val in ipairs(remainingRewards) do
-		if val < minVal then minVal = val end
-		if val > maxVal then maxVal = val end
+export type Evaluation = {
+	decision: string, grade: string, score: number, offer: number, ev: number,
+	spread: number, certaintyEquivalent: number, explanation: string, automatic: boolean,
+}
+
+function DecisionQuality.evaluate(decision: string, offer: number, ev: number, values: { number }, automatic: boolean?): Evaluation
+	local low, high, utility = math.huge, 0, 0
+	for _, value in values do
+		low = math.min(low, value)
+		high = math.max(high, value)
+		utility += math.sqrt(value)
 	end
-	if minVal == math.huge then minVal = 0 end
-	if maxVal == -math.huge then maxVal = 0 end
-
-	local spread = maxVal - minVal
-	local ratio = if ev > 0 then (offer / ev) else 1.0
-
-	local grade: Types.DecisionQualityGrade
-	local explanation: string
-
-	if decision == "EXTRACT" then
-		-- Accepting the sure thing
-		if ratio >= 0.85 and spread >= 4000 then
-			grade = "ELITE_EXTRACT"
-			explanation = "Secured high guaranteed value against massive downside risk."
-		elseif ratio >= 0.65 then
-			grade = "SOUND_EXTRACT"
-			explanation = "Solid risk-adjusted extraction with favorable certainty."
+	if #values == 0 then low = 0 end
+	local ce = if #values > 0 then (utility / #values) ^ 2 else 0
+	local ratio = if ev > 0 then offer / ev else 1
+	local grade, score, explanation = "DARING_PUSH", 0, "risk_preference"
+	if automatic then
+		grade, score, explanation = "AUTO_PUSH", 0, "automatic_neutral"
+	elseif decision == "EXTRACT" then
+		if ratio >= 0.85 and high - low >= 4000 then
+			grade, score, explanation = "ELITE_EXTRACT", 1, "certainty_high_spread"
+		elseif offer >= ce * 0.9 then
+			grade, score, explanation = "SOUND_EXTRACT", 1, "certainty_fair"
 		else
-			grade = "CAUTIOUS_EXTRACT"
-			explanation = "Extracted early under a conservative valuation."
+			grade, score, explanation = "CAUTIOUS_EXTRACT", 0, "early_certainty"
 		end
-	else -- PUSH
-		-- Rejecting the offer for higher variance
-		if ratio <= 0.65 then
-			grade = "REASONABLE_PUSH"
-			explanation = "Low offer relative to potential. Push was mathematically justified."
-		elseif maxVal >= 5000 or (maxVal - offer >= 1500) then
-			grade = "DARING_PUSH"
-			explanation = "Bold push into high volatility targeting the top-tier prize."
-		elseif ratio >= 0.88 and spread < 2000 then
-			grade = "GREEDY_BLUNDER"
-			explanation = "High-risk rejection of a near-optimal certainty offer with little upside."
-		else
-			grade = "DARING_PUSH"
-			explanation = "Aggressive push into uncertainty against a competitive offer."
-		end
+	elseif ratio <= 0.65 or offer < ce * 0.8 then
+		grade, score, explanation = "REASONABLE_PUSH", 1, "room_to_continue"
+	elseif ratio >= 0.88 and high > 0 and (high - offer) / high < 0.12 then
+		grade, score, explanation = "THIN_UPSIDE", -1, "limited_upside"
 	end
-
 	return {
-		decision = decision,
-		grade = grade,
-		offer = offer,
-		ev = ev,
-		spread = spread,
-		explanation = explanation,
+		decision = decision, grade = grade, score = score, offer = offer, ev = ev,
+		spread = high - low, certaintyEquivalent = ce, explanation = explanation,
+		automatic = automatic == true,
 	}
 end
 

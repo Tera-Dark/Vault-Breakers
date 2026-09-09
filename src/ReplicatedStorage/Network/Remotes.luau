@@ -1,54 +1,25 @@
 --!strict
-local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local Remotes = {}
-
-local REMOTE_EVENT_NAMES = {
-	"StateChanged",              -- Server -> All: (newState, extraData)
-	"VaultClaimed",              -- Server -> All: (vaultId, breakerUserId)
-	"VaultBreached",             -- Server -> All: (vaultId, revealedValue, remainingVaultsCount)
-	"OfferPresented",            -- Server -> All: (roundIndex, offerAmount, pressureSeconds)
-	"PlayerDecision",            -- Client -> Server: (decision: "EXTRACT" | "PUSH")
-	"AudienceVote",              -- Client -> Server: (vote: "EXTRACT" | "PUSH")
-	"AudiencePollUpdated",       -- Server -> All: (extractCount, pushCount, extractPct, pushPct)
-	"AudienceLifelineTriggered", -- Server -> All: (secondsLeft)
-	"TriggerLifeline",           -- Client -> Server: ()
-	"FinalSwapDecision",         -- Client -> Server: (choice: "KEEP" | "SWAP")
-	"MatchEnded",                -- Server -> All: (summaryTable)
-	"RequestStartMatch",         -- Client -> Server: ()
-	"RequestLeaderboard",        -- Client -> Server: ()
-	"LeaderboardData",           -- Server -> Client: (topEarningsList, topHeatList)
-	"PlayerDataSync",            -- Server -> Client: (playerData)
-	"BuyShopItem",               -- Client -> Server: (itemId)
-	"ShopPurchaseResult",        -- Server -> Client: (success, message, newCash)
-	"UseInventoryItem",          -- Client -> Server: (itemId)
-}
-
-local remotesFolder: Folder
-
+local RunService = game:GetService("RunService")
+local names = { "Action", "Snapshot", "Directory", "Profile", "Notice" }
+local folder: Folder
 if RunService:IsServer() then
-	remotesFolder = ReplicatedStorage:FindFirstChild("VaultRemotes") :: Folder
-	if not remotesFolder then
-		remotesFolder = Instance.new("Folder")
-		remotesFolder.Name = "VaultRemotes"
-		remotesFolder.Parent = ReplicatedStorage
+	local old = ReplicatedStorage:FindFirstChild("VaultRemotes")
+	if old then old:Destroy() end
+	folder = Instance.new("Folder")
+	folder.Name = "VaultRemotes"
+	for _, name in names do
+		local event = Instance.new("RemoteEvent")
+		event.Name = name
+		event.Parent = folder
 	end
-
-	for _, name in ipairs(REMOTE_EVENT_NAMES) do
-		if not remotesFolder:FindFirstChild(name) then
-			local event = Instance.new("RemoteEvent")
-			event.Name = name
-			event.Parent = remotesFolder
-		end
-	end
+	folder.Parent = ReplicatedStorage
 else
-	remotesFolder = ReplicatedStorage:WaitForChild("VaultRemotes") :: Folder
+	folder = ReplicatedStorage:WaitForChild("VaultRemotes") :: Folder
 end
-
+local Remotes = {}
 function Remotes.getEvent(name: string): RemoteEvent
-	local remote = remotesFolder:WaitForChild(name) :: RemoteEvent
-	return remote
+	assert(table.find(names, name), "Unknown remote: " .. name)
+	return folder:WaitForChild(name) :: RemoteEvent
 end
-
 return Remotes

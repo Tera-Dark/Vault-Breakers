@@ -1,32 +1,30 @@
 --!strict
-local GameConfig = {}
-
--- PRD 12: Vault count
-GameConfig.TOTAL_VAULTS = 12
-
--- PRD 14: Round Structure
--- Round 1: Open 4 (8 remaining) -> Offer #1
--- Round 2: Open 3 (5 remaining) -> Offer #2
--- Round 3: Open 2 (3 remaining) -> Offer #3
--- Final Phase: 2 remaining (Claim + 1 Final Vault) -> Final Offer -> Keep/Swap -> Final Reveal
-GameConfig.ROUNDS = {
-	[1] = { vaultsToBreach = 4, targetRemaining = 8 },
-	[2] = { vaultsToBreach = 3, targetRemaining = 5 },
-	[3] = { vaultsToBreach = 2, targetRemaining = 3 },
-}
-
--- PRD 19: Pressure Clock Duration
-GameConfig.PRESSURE_CLOCK_SECONDS = 18
-GameConfig.CRITICAL_PRESSURE_SECONDS = 5
-
--- PRD 20: Timeout Policy
-GameConfig.TIMEOUT_POLICY = "AUTO_PUSH"
-
--- PRD 22: Audience Lifeline
-GameConfig.LIFELINE_POLL_DURATION = 10
-GameConfig.MAX_LIFELINES_PER_RUN = 1
-
--- PRD 15: Single Opening Animation Target Duration
-GameConfig.VAULT_OPENING_DURATION = 1.5
-
-return GameConfig
+-- Engine configuration is deliberately Roblox-independent so it can be tested headlessly.
+return table.freeze({
+	TOTAL_VAULTS = 12,
+	-- The fourth breach is essential: 12 - 4 - 3 - 2 - 1 = 2, including the claim.
+	ROUNDS = {
+		{ vaultsToBreach = 4, targetRemaining = 8 },
+		{ vaultsToBreach = 3, targetRemaining = 5 },
+		{ vaultsToBreach = 2, targetRemaining = 3 },
+		{ vaultsToBreach = 1, targetRemaining = 2 },
+	},
+	PRESSURE_CLOCK_SECONDS = 18,
+	CRITICAL_PRESSURE_SECONDS = 5,
+	CLAIM_SECONDS = 45,
+	BREACH_SECONDS = 40,
+	VAULT_OPENING_DURATION = 1.35,
+	TRANSITION_SECONDS = 0.8,
+	FINAL_CHOICE_SECONDS = 15,
+	REVEAL_SECONDS = 3.6,
+	RESULT_SECONDS = 14,
+	LIFELINE_POLL_DURATION = 10,
+	LIFELINE_MIN_RESUME_SECONDS = 6,
+	LIFELINE_FIRST_ROUND = 3,
+	RECOMMENDED_MAX_PLAYERS = 8,
+	NETWORK_INTERVAL = 0.1,
+	ARENAS = {
+		{ id = "MAIN", name = "STUDIO 01", audience = true },
+		{ id = "QUICK", name = "STUDIO 02", audience = false },
+	},
+})

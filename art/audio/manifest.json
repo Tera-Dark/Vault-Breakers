@@ -1,0 +1,51 @@
+{
+  "origin": "Procedural original synthesis; no third-party samples",
+  "generator": "scripts/generate-audio.py",
+  "sampleRate": 44100,
+  "channels": 1,
+  "bitsPerSample": 16,
+  "cues": [
+    {
+      "key": "Claim",
+      "file": "claim-lock.wav",
+      "seconds": 0.34,
+      "description": "Claim latches shut; two small mechanical contacts.",
+      "sha256": "6604f6ad590b0aada8473396a0cb2a57a5e2e5069515d6bb648ad96cbeb4030f"
+    },
+    {
+      "key": "Breach",
+      "file": "vault-breach.wav",
+      "seconds": 1.35,
+      "description": "Lock retraction, subdued rotation, then a damped stop.",
+      "sha256": "1502ed5a9d828561289b6f82e292d6caacdf6eb3eebf8afe21c7722a015576cb"
+    },
+    {
+      "key": "Offer",
+      "file": "curator-offer.wav",
+      "seconds": 0.82,
+      "description": "A restrained three-part broadcast signal, not a jackpot flourish.",
+      "sha256": "34c34ee9f9924f4091e7e68880c37df595335fe04e78dfc10f46f28874e61fdc"
+    },
+    {
+      "key": "Heartbeat",
+      "file": "pressure-heartbeat.wav",
+      "seconds": 0.96,
+      "description": "Low double pulse with clean silent loop boundaries.",
+      "sha256": "a906effbbb0fe65a060fcb1de02fcf1ea1c6eae2a2bdcd288c599dbb685638db"
+    },
+    {
+      "key": "Tick",
+      "file": "pressure-tick.wav",
+      "seconds": 0.13,
+      "description": "Short, softened clock contact.",
+      "sha256": "8be5ac64dcce57a33c6fe9cf81bce26504c87e60a10a942b467f7e1f39e6dc27"
+    },
+    {
+      "key": "Reveal",
+      "file": "final-reveal.wav",
+      "seconds": 1.65,
+      "description": "Neutral low resonance for either relief or regret; no victory fanfare.",
+      "sha256": "b2214dd453eac27f39ceb956121e4001f45268d0130963c2af258ba376b5d81e"
+    }
+  ]
+}

@@ -1,50 +1,30 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Types = require(ReplicatedStorage.VaultBreakers.Shared.Types)
-local DecisionQuality = require(ReplicatedStorage.VaultBreakers.Shared.DecisionQuality)
-
 local DecisionService = {}
-
--- PRD 31-32: Heat Multipliers based on decision streaks
-local HEAT_TIERS = { 1.0, 1.2, 1.5, 2.0 }
-
-local playerHeats: { [number]: { streak: number, heatIndex: number } } = {}
-
-function DecisionService.getPlayerHeat(userId: number): number
-	local data = playerHeats[userId]
-	if not data then
-		return 1.0
-	end
-	return HEAT_TIERS[data.heatIndex] or 1.0
+local TIERS = { { points = 0, heat = 1.0 }, { points = 3, heat = 1.2 }, { points = 7, heat = 1.5 }, { points = 12, heat = 2.0 } }
+function DecisionService.heatFor(points: number): number
+	local heat = 1
+	for _, tier in TIERS do if points >= tier.points then heat = tier.heat end end
+	return heat
 end
-
-function DecisionService.recordDecision(
-	userId: number,
-	decision: Types.PlayerDecisionType,
-	offer: number,
-	ev: number,
-	remainingRewards: { number }
-): Types.DecisionEvaluation
-	local evalResult = DecisionQuality.evaluate(decision, offer, ev, remainingRewards)
-	
-	if not playerHeats[userId] then
-		playerHeats[userId] = { streak = 0, heatIndex = 1 }
-	end
-
-	local pHeat = playerHeats[userId]
-	if evalResult.grade == "ELITE_EXTRACT" or evalResult.grade == "SOUND_EXTRACT" or evalResult.grade == "REASONABLE_PUSH" then
-		pHeat.streak += 1
-		if pHeat.streak >= 2 and pHeat.heatIndex < #HEAT_TIERS then
-			pHeat.heatIndex += 1
+function DecisionService.apply(profile: any, decisions: { any }): number
+	local reputation = 2 -- completion, not a prediction stake
+	for _, decision in decisions do
+		profile.qualityPoints = math.max(0, profile.qualityPoints + decision.score)
+		if decision.score > 0 then
+			profile.decisionStreak += 1
+			reputation += 2
+		elseif decision.score < 0 then
+			profile.decisionStreak = math.max(0, profile.decisionStreak - 1)
 		end
-	elseif evalResult.grade == "GREEDY_BLUNDER" then
-		pHeat.streak = math.max(0, pHeat.streak - 1)
-		if pHeat.heatIndex > 1 then
-			pHeat.heatIndex -= 1
+		if not decision.automatic then
+			profile.decisionsMade += 1
+			if decision.score > 0 then profile.soundDecisions += 1 end
 		end
 	end
-
-	return evalResult
+	profile.heat = DecisionService.heatFor(profile.qualityPoints)
+	profile.highestHeat = math.max(profile.highestHeat, profile.heat)
+	profile.longestStreak = math.max(profile.longestStreak, profile.decisionStreak)
+	profile.reputation += reputation
+	return reputation
 end
-
 return DecisionService

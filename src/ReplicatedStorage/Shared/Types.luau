@@ -1,43 +1,19 @@
 --!strict
-local MatchState = require(script.Parent.MatchState)
-
-export type VaultData = {
-	id: number,
-	rewardValue: number,
-	isClaimed: boolean,
-	isBreached: boolean,
+export type PublicVault = { id: number, claimed: boolean, opened: boolean, value: number? }
+export type Decision = { decision: string, grade: string, score: number, offer: number, ev: number, spread: number, certaintyEquivalent: number, explanation: string, automatic: boolean }
+export type Result = {
+	breakerId: number, breakerName: string, extracted: boolean, baseCredits: number,
+	credits: number, heat: number, claimValue: number, chosenValue: number,
+	otherValue: number?, choice: string?, round: number, decisions: { Decision },
+	reputationGain: number?, nextHeat: number?,
 }
-
-export type PlayerDecisionType = "EXTRACT" | "PUSH"
-export type FinalDecisionType = "KEEP" | "SWAP"
-
-export type DecisionQualityGrade = 
-	"ELITE_EXTRACT"
-	| "SOUND_EXTRACT"
-	| "CAUTIOUS_EXTRACT"
-	| "REASONABLE_PUSH"
-	| "DARING_PUSH"
-	| "GREEDY_BLUNDER"
-
-export type DecisionEvaluation = {
-	decision: PlayerDecisionType,
-	grade: DecisionQualityGrade,
-	offer: number,
-	ev: number,
-	spread: number,
-	explanation: string,
+export type Snapshot = {
+	arenaId: string, runId: number, phaseId: number, revision: number, state: string, breakerId: number?,
+	breakerName: string, round: number, claimId: number?, quota: number, breached: number,
+	remaining: { number }, vaults: { PublicVault }, offer: number, deadline: number,
+	heat: number, audience: boolean, lifelineAvailable: boolean, lifelineUsed: boolean,
+	poll: { left: number, right: number, total: number, kind: string, myVote: string? },
+	consensus: string?, lastBreach: { id: number, value: number }?, result: Result?,
+	finalId: number?, revealId: number?, automatic: boolean,
 }
-
-export type MatchSummary = {
-	breakerUserId: number,
-	breakerName: string,
-	finalEarnings: number,
-	isExtracted: boolean,
-	extractionRound: number?,
-	claimVaultValue: number,
-	finalVaultValue: number?,
-	heatMultiplier: number,
-	decisions: { DecisionEvaluation },
-}
-
 return {}

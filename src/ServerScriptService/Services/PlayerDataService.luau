@@ -1,151 +1,189 @@
---!strict
+--!nonstrict
+-- Player-instance ownership + a unique lock per load, not just per server.
+-- Retired async callbacks operate on their captured entry and cannot erase a reconnect.
 local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
+local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local Remotes = require(ReplicatedStorage.VaultBreakers.Network.Remotes)
-
-local PlayerDataService = {}
-
-export type PlayerData = {
-	cash: number,
-	careerEarnings: number,
-	careerWins: number,
-	careerMatches: number,
-	inventory: { [string]: number },
-	hasPass: boolean,
-}
-
-local playerDataCache: { [number]: PlayerData } = {}
-local dataStore: GlobalDataStore? = nil
-
-pcall(function()
-	dataStore = DataStoreService:GetDataStore("VaultBreakers_UserData_v1")
-end)
-
-local DEFAULT_DATA: PlayerData = {
-	cash = 100000,
-	careerEarnings = 0,
-	careerWins = 0,
-	careerMatches = 0,
-	inventory = {
-		["PEEK_CARD"] = 3,
-		["EXTEND_TIME"] = 2,
-		["INSURANCE"] = 1,
-	},
-	hasPass = false,
-}
-
-local SHOP_CATALOG = {
-	["VIP_PASS"] = { price = 88000, itemType = "PASS", name = "第三季 VIP 黄金通行证" },
-	["VAULT_SKIN"] = { price = 50000, itemType = "SKIN", name = "黑曜石镀金防盗门皮肤" },
-	["TACTICAL_PACK"] = { price = 30000, itemType = "BUNDLE", name = "挑战者战术急救礼包" },
-}
-
-function PlayerDataService.init()
-	Players.PlayerAdded:Connect(function(player: Player)
-		PlayerDataService.loadData(player)
-	end)
-
-	Players.PlayerRemoving:Connect(function(player: Player)
-		PlayerDataService.saveData(player)
-		playerDataCache[player.UserId] = nil
-	end)
-
-	for _, player in ipairs(Players:GetPlayers()) do
-		task.spawn(PlayerDataService.loadData, player)
-	end
-
-	-- Handle Shop Purchases
-	Remotes.getEvent("BuyShopItem").OnServerEvent:Connect(function(player: Player, itemId: any)
-		if typeof(itemId) ~= "string" then return end
-		local catalogItem = SHOP_CATALOG[itemId]
-		if not catalogItem then
-			Remotes.getEvent("ShopPurchaseResult"):FireClient(player, false, "商品不存在", 0)
-			return
-		end
-
-		local data = PlayerDataService.getData(player.UserId)
-		if data.cash < catalogItem.price then
-			Remotes.getEvent("ShopPurchaseResult"):FireClient(player, false, "筹码不足", data.cash)
-			return
-		end
-
-		data.cash -= catalogItem.price
-		if itemId == "VIP_PASS" then
-			data.hasPass = true
-		elseif itemId == "TACTICAL_PACK" then
-			data.inventory["PEEK_CARD"] = (data.inventory["PEEK_CARD"] or 0) + 3
-			data.inventory["EXTEND_TIME"] = (data.inventory["EXTEND_TIME"] or 0) + 2
-			data.inventory["INSURANCE"] = (data.inventory["INSURANCE"] or 0) + 1
-		else
-			data.inventory[itemId] = (data.inventory[itemId] or 0) + 1
-		end
-
-		PlayerDataService.syncClient(player)
-		Remotes.getEvent("ShopPurchaseResult"):FireClient(player, true, "购买成功: " .. catalogItem.name, data.cash)
-		print(string.format("[PlayerDataService] Player %s purchased %s for ¥%d", player.Name, catalogItem.name, catalogItem.price))
-	end)
-
-	print("[PlayerDataService] Initialized with Shop & Inventory support.")
+local Schema = require(ReplicatedStorage.VaultBreakers.Shared.ProfileSchema)
+local Decisions = require(script.Parent.DecisionService)
+local Service = { entries = {}, onChanged = function() end, closing = false }
+local store
+pcall(function() store = DataStoreService:GetDataStore("VaultBreakers_UserData_v1") end)
+local serverId = if game.JobId ~= "" then game.JobId else HttpService:GenerateGUID(false)
+local LOCK_TTL = 180
+local closeEntry
+local function writable(entry)
+	return entry.status == "READY" or entry.status == "SAVE_DELAYED"
+end
+local function isCurrent(entry)
+	return Service.entries[entry.owner.UserId] == entry and entry.owner.Parent == Players and not entry.leaving
+end
+local function changed(entry)
+	if isCurrent(entry) then Service.onChanged(entry.owner) end
+end
+local function forget(userId, entry)
+	entry.closed = true
+	if Service.entries[userId] == entry then Service.entries[userId] = nil end
+end
+function Service.get(player)
+	local entry = Service.entries[player.UserId]
+	return if entry and entry.owner == player and not entry.closed then entry else nil
+end
+function Service.public(player)
+	local entry = Service.get(player)
+	if not entry then return { status = "LOADING" } end
+	local data = table.clone(entry.data)
+	data.status = entry.status
+	return data
 end
 
-function PlayerDataService.loadData(player: Player): PlayerData
-	local userId = player.UserId
-	local loadedData: PlayerData = table.clone(DEFAULT_DATA)
-	loadedData.inventory = table.clone(DEFAULT_DATA.inventory)
-
-	if dataStore then
-		local success, saved = pcall(function()
-			return dataStore:GetAsync("User_" .. userId)
+function Service.save(userId, release, expectedEntry)
+	local entry = expectedEntry or Service.entries[userId]
+	if not entry or entry.closed or not writable(entry) or entry.saving then return false end
+	entry.saving = true
+	local copy = table.clone(entry.data)
+	local previousStatus, lostLock = entry.status, false
+	local ok, failure = pcall(function()
+		return store:UpdateAsync("User_" .. userId, function(old)
+			if type(old) ~= "table" or type(old.session) ~= "table" or old.session.id ~= entry.lockId then
+				lostLock = true
+				return nil
+			end
+			local updated = table.clone(old) -- preserve legacy / unknown root fields
+			updated.profile = copy
+			updated.session = if release then nil else { id = entry.lockId, time = os.time() }
+			return updated
 		end)
-		if success and saved and typeof(saved) == "table" then
-			for k, v in pairs(saved) do
-				(loadedData :: any)[k] = v
+	end)
+	entry.saving = false
+	if lostLock then
+		entry.status = "SESSION_ONLY"
+		warn("[Vault] Session lock lost; stopped saving user " .. userId)
+	elseif not ok then
+		entry.status = "SAVE_DELAYED"
+		warn("[Vault] Save failed for " .. userId .. ": " .. tostring(failure))
+	else entry.status = "READY" end
+	if previousStatus ~= entry.status then changed(entry) end
+	-- A leave worker may have timed out while this request was in flight.
+	if entry.leaving and not entry.closing and not release then task.defer(closeEntry, userId, entry) end
+	return ok and not lostLock
+end
+
+closeEntry = function(userId, entry)
+	entry.leaving = true
+	if entry.loading or entry.closing or entry.closed then return end
+	entry.closing = true
+	local deadline = os.clock() + 20
+	while entry.saving and os.clock() < deadline do task.wait(0.1) end
+	if entry.saving then
+		entry.closing = false -- the in-flight save schedules another close when it finishes
+		return
+	end
+	for attempt = 1, 3 do
+		if Service.save(userId, true, entry) or not writable(entry) then break end
+		task.wait(attempt)
+	end
+	forget(userId, entry)
+end
+
+function Service.load(player)
+	if Service.closing or player.Parent ~= Players then return end
+	local previous = Service.entries[player.UserId]
+	if previous and previous.owner == player then return end
+	local entry = {
+		owner = player, lockId = serverId .. ":" .. HttpService:GenerateGUID(false),
+		data = Schema.normalize(nil), status = "LOADING", revision = 0,
+		loading = true, saving = false, leaving = false, closed = false,
+	}
+	Service.entries[player.UserId] = entry
+	if previous then
+		previous.leaving = true
+		task.spawn(closeEntry, player.UserId, previous)
+		-- Give the former connection a bounded opportunity to finish its write/release.
+		local deadline = os.clock() + 8
+		while not previous.closed and isCurrent(entry) and os.clock() < deadline do task.wait(0.1) end
+	end
+	local loaded, failure
+	for attempt = 1, 2 do
+		if not isCurrent(entry) or Service.closing then break end
+		if not store then failure = "experience is not published / DataStore unavailable"; break end
+		local blocked = false
+		local ok, result = pcall(function()
+			return store:UpdateAsync("User_" .. player.UserId, function(old)
+				if not isCurrent(entry) or Service.closing then return nil end
+				old = if type(old) == "table" then old else {}
+				local lock = old.session
+				if type(lock) == "table" and lock.id ~= entry.lockId and type(lock.time) == "number" and os.time() - lock.time < LOCK_TTL then
+					blocked = true
+					return nil
+				end
+				local updated = table.clone(old)
+				updated.profile = Schema.normalize(old)
+				updated.session = { id = entry.lockId, time = os.time() }
+				return updated
+			end)
+		end)
+		if ok and result and not blocked then loaded = result; break end
+		failure = if blocked then "profile is active in another server" else tostring(result)
+		if attempt < 2 and isCurrent(entry) then task.wait(1) end
+	end
+	entry.loading = false
+	if loaded then entry.data, entry.status = Schema.normalize(loaded), "READY"
+	else
+		entry.status = "SESSION_ONLY"
+		if isCurrent(entry) then warn("[Vault] Persistent data unavailable; session-only play, no writes: " .. tostring(failure)) end
+	end
+	if not isCurrent(entry) or Service.closing then closeEntry(player.UserId, entry); return end
+	changed(entry)
+end
+
+function Service.record(player, result, isMain)
+	local entry = Service.get(player)
+	if not entry or not isCurrent(entry) or entry.loading or Service.closing then return end
+	local data = entry.data
+	data.credits += result.credits
+	data.totalEarnings += result.credits
+	data.runs += 1
+	if isMain then data.mainAppearances += 1 end
+	if result.extracted then data.bestExtract = math.max(data.bestExtract, result.baseCredits)
+	else data.bestFinal = math.max(data.bestFinal, result.baseCredits) end
+	local gain = Decisions.apply(data, result.decisions)
+	entry.revision += 1
+	changed(entry)
+	return gain
+end
+function Service.remove(player)
+	local entry = Service.get(player)
+	if entry then closeEntry(player.UserId, entry) end
+end
+function Service.init()
+	Players.PlayerAdded:Connect(function(player) task.spawn(Service.load, player) end)
+	Players.PlayerRemoving:Connect(function(player) task.spawn(Service.remove, player) end)
+	for _, player in Players:GetPlayers() do task.spawn(Service.load, player) end
+	task.spawn(function()
+		while not Service.closing do
+			task.wait(60)
+			if Service.closing then break end
+			for userId, entry in Service.entries do
+				if not entry.leaving then task.spawn(Service.save, userId, false, entry) end
 			end
 		end
-	end
-
-	playerDataCache[userId] = loadedData
-	PlayerDataService.syncClient(player)
-	return loadedData
-end
-
-function PlayerDataService.saveData(player: Player)
-	local userId = player.UserId
-	local data = playerDataCache[userId]
-	if not data or not dataStore then return end
-
-	pcall(function()
-		dataStore:SetAsync("User_" .. userId, data)
+	end)
+	game:BindToClose(function()
+		Service.closing = true
+		local pending = 0
+		for userId, entry in Service.entries do
+			pending += 1
+			task.spawn(function()
+				closeEntry(userId, entry)
+				local deadline = os.clock() + 24
+				while not entry.closed and os.clock() < deadline do task.wait(0.1) end
+				pending -= 1
+			end)
+		end
+		local deadline = os.clock() + 25
+		while pending > 0 and os.clock() < deadline do task.wait(0.1) end
 	end)
 end
-
-function PlayerDataService.getData(userId: number): PlayerData
-	if not playerDataCache[userId] then
-		playerDataCache[userId] = table.clone(DEFAULT_DATA)
-		playerDataCache[userId].inventory = table.clone(DEFAULT_DATA.inventory)
-	end
-	return playerDataCache[userId]
-end
-
-function PlayerDataService.addEarnings(player: Player, earnings: number)
-	local data = PlayerDataService.getData(player.UserId)
-	data.cash += earnings
-	data.careerMatches += 1
-	if earnings > 0 then
-		data.careerWins += 1
-	end
-	if earnings > data.careerEarnings then
-		data.careerEarnings = earnings
-	end
-	PlayerDataService.syncClient(player)
-	PlayerDataService.saveData(player)
-end
-
-function PlayerDataService.syncClient(player: Player)
-	local data = PlayerDataService.getData(player.UserId)
-	Remotes.getEvent("PlayerDataSync"):FireClient(player, data)
-end
-
-return PlayerDataService
+return Service

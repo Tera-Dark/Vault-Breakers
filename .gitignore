@@ -13,3 +13,13 @@ Thumbs.db
 # IDE & Tooling
 .vscode/
 .idea/
+
+# Local tool downloads and generated diagnostics
+.cache/
+.tools/
+*.rbxl.lock
+sourcemap.json
+
+# Dependency caches are never project deliverables
+node_modules/
+__pycache__/
