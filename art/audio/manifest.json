@@ -44,8 +44,29 @@
       "key": "Reveal",
       "file": "final-reveal.wav",
       "seconds": 1.65,
-      "description": "Neutral low resonance for either relief or regret; no victory fanfare.",
-      "sha256": "b2214dd453eac27f39ceb956121e4001f45268d0130963c2af258ba376b5d81e"
+      "description": "Short original broadcast resolution sting; completion, not a luck-based decision grade.",
+      "sha256": "f295c9165cc154426f45740dfeeae4bd1747777633cbcd7477760be15ce3792a"
+    },
+    {
+      "key": "Showtime",
+      "file": "showtime-sting.wav",
+      "seconds": 1.2,
+      "description": "Skippable entrance sting with no spoken voice.",
+      "sha256": "b470ca71109dab9b0ba1fbe4ae6823a0d828cb33d5b0b99e40171d27ba41643d"
+    },
+    {
+      "key": "Impact",
+      "file": "vault-impact.wav",
+      "seconds": 0.7,
+      "description": "One low, damped impact; no piercing alarm or strobe.",
+      "sha256": "971ace834124eb280e5db29ad6746c20f0f4ce4dee0df24a858c96fb540e3f3c"
+    },
+    {
+      "key": "Music",
+      "file": "low-drone-pulse.wav",
+      "seconds": 8,
+      "description": "Original low drone pulse with silent loop boundaries; keep below speech and important cues.",
+      "sha256": "81921c519c6ea75decf83efebf9cf3f5c4d28caca7cf3ff7df02f17941304ede"
     }
   ]
 }

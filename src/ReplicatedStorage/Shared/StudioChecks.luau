@@ -59,6 +59,15 @@ function Checks.run(quiet)
 		if report.stats.parts>3000 then note("WARN","PART_BUDGET",world,"More than 3,000 set parts. Profile on target devices.") end
 	end
 	if not RunService:IsServer() then
+		report.audio={};report.stats.audioReady=0
+		for _,container in {game:GetService("SoundService"),workspace}do
+			for _,sound in container:GetDescendants()do
+				if sound:IsA("Sound")and sound:GetAttribute("VaultAudioCue")then
+					table.insert(report.audio,{cue=sound:GetAttribute("VaultAudioCue"),id=sound.SoundId,loaded=sound.IsLoaded,seconds=sound.TimeLength})
+					if sound.IsLoaded then report.stats.audioReady+=1 else note("WARN","AUDIO_NOT_LOADED",sound,"Check experience permissions / network / asset availability. A configured ID is not proof of playback.")end
+				end
+			end
+		end
 		local player=Players.LocalPlayer
 		local gui=player and player:FindFirstChildOfClass("PlayerGui")
 		local root=gui and gui:FindFirstChild("VaultBreakersUI")

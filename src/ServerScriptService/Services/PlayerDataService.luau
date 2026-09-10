@@ -7,6 +7,8 @@ local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Schema = require(ReplicatedStorage.VaultBreakers.Shared.ProfileSchema)
 local Decisions = require(script.Parent.DecisionService)
+local Progression=require(ReplicatedStorage.VaultBreakers.Shared.ProgressionRules)
+local Catalog=require(ReplicatedStorage.VaultBreakers.Config.CosmeticCatalog)
 local Service = { entries = {}, onChanged = function() end, closing = false }
 local store
 pcall(function() store = DataStoreService:GetDataStore("VaultBreakers_UserData_v1") end)
@@ -33,7 +35,7 @@ end
 function Service.public(player)
 	local entry = Service.get(player)
 	if not entry then return { status = "LOADING" } end
-	local data = table.clone(entry.data)
+	local data = Schema.copy(entry.data)
 	data.status = entry.status
 	return data
 end
@@ -42,7 +44,7 @@ function Service.save(userId, release, expectedEntry)
 	local entry = expectedEntry or Service.entries[userId]
 	if not entry or entry.closed or not writable(entry) or entry.saving then return false end
 	entry.saving = true
-	local copy = table.clone(entry.data)
+	local copy = Schema.copy(entry.data)
 	local previousStatus, lostLock = entry.status, false
 	local ok, failure = pcall(function()
 		return store:UpdateAsync("User_" .. userId, function(old)
@@ -94,7 +96,7 @@ function Service.load(player)
 	local entry = {
 		owner = player, lockId = serverId .. ":" .. HttpService:GenerateGUID(false),
 		data = Schema.normalize(nil), status = "LOADING", revision = 0,
-		loading = true, saving = false, leaving = false, closed = false,
+		loading = true, saving = false, leaving = false, closed = false, settled={},
 	}
 	Service.entries[player.UserId] = entry
 	if previous then
@@ -108,11 +110,12 @@ function Service.load(player)
 	for attempt = 1, 2 do
 		if not isCurrent(entry) or Service.closing then break end
 		if not store then failure = "experience is not published / DataStore unavailable"; break end
-		local blocked = false
+		local blocked,unsupported = false,false
 		local ok, result = pcall(function()
 			return store:UpdateAsync("User_" .. player.UserId, function(old)
 				if not isCurrent(entry) or Service.closing then return nil end
 				old = if type(old) == "table" then old else {}
+				if not Schema.supported(old)then unsupported=true;return nil end
 				local lock = old.session
 				if type(lock) == "table" and lock.id ~= entry.lockId and type(lock.time) == "number" and os.time() - lock.time < LOCK_TTL then
 					blocked = true
@@ -124,8 +127,8 @@ function Service.load(player)
 				return updated
 			end)
 		end)
-		if ok and result and not blocked then loaded = result; break end
-		failure = if blocked then "profile is active in another server" else tostring(result)
+		if ok and result and not blocked and not unsupported then loaded = result; break end
+		failure = if unsupported then "unsupported/newer profile version; no writes" elseif blocked then "profile is active in another server" else tostring(result)
 		if attempt < 2 and isCurrent(entry) then task.wait(1) end
 	end
 	entry.loading = false
@@ -141,6 +144,10 @@ end
 function Service.record(player, result, isMain)
 	local entry = Service.get(player)
 	if not entry or not isCurrent(entry) or entry.loading or Service.closing then return end
+	if result.arenaId and result.runId then
+		if (entry.settled[result.arenaId]or 0)>=result.runId then return nil end
+		entry.settled[result.arenaId]=result.runId
+	end
 	local data = entry.data
 	data.credits += result.credits
 	data.totalEarnings += result.credits
@@ -149,9 +156,33 @@ function Service.record(player, result, isMain)
 	if result.extracted then data.bestExtract = math.max(data.bestExtract, result.baseCredits)
 	else data.bestFinal = math.max(data.bestFinal, result.baseCredits) end
 	local gain = Decisions.apply(data, result.decisions)
+	result.unlockedTitles=Progression.apply(data,result)
 	entry.revision += 1
 	changed(entry)
 	return gain
+end
+function Service.style(player,operation,id)
+	local entry=Service.get(player)
+	if not entry or not isCurrent(entry)or entry.loading or Service.closing then return false,"profile_wait"end
+	if type(id)~="string"or #id>24 then return false,"invalid_action"end
+	local data=entry.data
+	if operation=="BUY_STYLE"then
+		local item=Catalog.ITEMS[id]
+		if not item then return false,"invalid_action"end
+		if data.ownedCosmetics[id]then return true,"style_owned"end
+		if not writable(entry)then return false,"style_requires_save"end
+		if data.credits<item.price then return false,"style_funds"end
+		-- No yields between validation, debit and unlock. Duplicate purchases are no-ops.
+		data.credits-=item.price;data.ownedCosmetics[id]=true
+	elseif operation=="EQUIP_STYLE"then
+		if not data.ownedCosmetics[id]then return false,"style_locked"end
+		data.equippedCosmetic=id
+	elseif operation=="EQUIP_TITLE"then
+		if id~=""and not data.achievements[id]then return false,"style_locked"end
+		data.equippedTitle=id
+	else return false,"invalid_action"end
+	entry.revision+=1;changed(entry)
+	return true,if operation=="BUY_STYLE"then"style_unlocked"else"style_equipped"
 end
 function Service.remove(player)
 	local entry = Service.get(player)

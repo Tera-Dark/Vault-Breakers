@@ -8,6 +8,7 @@
 - `lobby-desktop.png`：新版可收起菜单，不再是旧常驻大厅。
 - `menu-mobile.png` / `menu-landscape.png`：竖屏、矮横屏菜单。
 - `offer-*.png` / `*-geometry.png`：局内布局与场景几何检查。
+- `live-tv.png` / `rolling-offer.png`：新电视内容与报价阶段的 GUI 检查；不证明原生灯光、头像或声音。
 
 不要把这些图上传为实机游戏截图。营销 AI 概念图在 `art/marketing`，也不得与实机画面混淆。
 

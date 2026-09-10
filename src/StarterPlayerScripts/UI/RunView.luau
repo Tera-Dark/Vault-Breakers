@@ -1,10 +1,11 @@
 --!nonstrict
 local UI = require(script.Parent.Components)
 local Numbers = require(game:GetService("ReplicatedStorage").VaultBreakers.Config.RewardPool)
+local Show=require(game:GetService("ReplicatedStorage").VaultBreakers.Shared.ShowRules)
 local C = UI.colors
 local Run = {}
 Run.__index = Run
-local TITLES = { CLAIM="claim", BREACH="breach", OPENING="opening", OFFER="offer", LIFELINE="lifeline", TRANSITION="transition", FINAL_CHOICE="final", REVEAL="reveal" }
+local TITLES = { SHOWTIME="showtime", BREACH_REACT="reaction", OFFER_ROLL="rolling", CLAIM="claim", BREACH="breach", OPENING="opening", OFFER="offer", LIFELINE="lifeline", TRANSITION="transition", FINAL_CHOICE="final", REVEAL="reveal" }
 function Run.new(parent,actions)
 	local self=setmetatable({actions=actions},Run)
 	self.root=UI.frame(parent,"Run",C.Ink);self.root.BackgroundTransparency=1;self.root.Size=UDim2.fromScale(1,1);self.root.Visible=false
@@ -48,6 +49,9 @@ function Run.new(parent,actions)
 	self.consensus=UI.text(self.root,"LifelineConsensus","",12,C.Amber,true)
 	self.help=UI.text(self.root,"InputHint","",11,C.Muted)
 	self.leave=UI.button(self.root,"Leave","","secondary",actions.leave)
+	self.portrait=UI.new("ImageLabel",self.root,{Name="ShowtimePortrait",BackgroundColor3=C.Panel,BorderSizePixel=0,Visible=false});UI.corner(self.portrait,16)
+	self.introName=UI.gameText(self.root,"ContestantName","",28,C.Ivory);self.introName.TextXAlignment=Enum.TextXAlignment.Center;self.introName.TextScaled=true
+	self.skip=UI.button(self.root,"SkipShowtime","","secondary",actions.skipShowtime)
 	self.standby=UI.button(self.root,"StartEmptyStage","","primary",function()actions.play("AUTO")end)
 	return self
 end
@@ -134,6 +138,13 @@ function Run:resize(w,h)
 	UI.place(self.help,20,h-49,w-196,24);self.help.Visible=not short
 	UI.place(self.leave,if short then 20 else w-170,h-54,if short then 156 else 150,44)
 	UI.place(self.standby,(w-260)/2,h*0.53,260,48)
+	UI.place(self.skip,(w-220)/2,if h<380 then h-56 else h-104,220,44)
+	if h<380 then
+		local left=math.max(20,(w-344)/2)
+		UI.place(self.portrait,left,132,56,56);UI.place(self.introName,left+70,141,math.min(274,w-left-90),38)
+	else
+		UI.place(self.portrait,(w-100)/2,h*.4,100,100);UI.place(self.introName,(w-math.min(400,w-40))/2,h*.4+112,math.min(400,w-40),36)
+	end
 end
 
 function Run:render(model,t)
@@ -147,13 +158,18 @@ function Run:render(model,t)
 	self.round.Text=if own then (if s.round>0 then t("round",{n=s.round}) else "01  /  "..t("choose")) else t("spectating",{name=s.breakerName})
 	self.title.Text=if state=="IDLE" then t("standby") else t(phase.."_title",{n=s.quota-s.breached})
 	self.body.Text=if state=="IDLE" then t("available") elseif s.automatic and state=="TRANSITION" then t("auto_body") else t(phase.."_body")
-	local stepIndex=if state=="CLAIM" then 1 elseif state=="BREACH" or state=="OPENING" then 2 elseif state=="OFFER" or state=="LIFELINE" or state=="TRANSITION" then 3 else 4
+	local stepIndex=if state=="CLAIM"or state=="SHOWTIME"then 1 elseif state=="BREACH"or state=="OPENING"or state=="BREACH_REACT"then 2 elseif state=="OFFER_ROLL"or state=="OFFER" or state=="LIFELINE" or state=="TRANSITION" then 3 else 4
 	for i,step in self.steps do
 		step.label.Text=string.format("%02d  /  ",i)..t(({"choose","open","offer","result"})[i])
 		step.label.TextColor3=if i==stepIndex then C.Ivory else C.Muted
 		step.rule.BackgroundColor3=if i==stepIndex then C.Amber else C.Line
 	end
-	self.board.Visible=active and not self.hideBoard
+	self.board.Visible=active and state~="SHOWTIME"and not self.hideBoard
+	self.skip.Visible=state=="SHOWTIME"and own
+	self.skip.Text=t("skip_showtime")
+	self.portrait.Visible,self.introName.Visible=state=="SHOWTIME",state=="SHOWTIME"
+	self.introName.Text=s.breakerName..(if s.titleId and s.titleId~=""then "\n"..t("title_"..s.titleId)else "")
+	if s.breakerId then self.portrait.Image="rbxthumb://type=AvatarHeadShot&id="..s.breakerId.."&w=150&h=150"end
 	self.boardTitle.Text=t("remaining",{n=#s.remaining})
 	self.claim.Text=t(if own then "claim_tag" else "breaker_claim",{n=if s.claimId then string.format("%02d",s.claimId) else "—"})..string.format("   ·   ×%.1f",s.heat)
 	local remaining={};for _,value in s.remaining do remaining[value]=true end
@@ -163,13 +179,13 @@ function Run:render(model,t)
 		cell.frame.BackgroundTransparency=if available then 0.06 else 0.6
 		cell.strike.Visible=not available
 	end
-	local offerState=state=="OFFER" or state=="FINAL_CHOICE" or state=="LIFELINE"
+	local offerState=state=="OFFER_ROLL" or state=="OFFER" or state=="FINAL_CHOICE" or state=="LIFELINE"
 	self.card.Visible=offerState
 	self.standby.Visible=state=="IDLE"
 	self.standby.Text=t("play").."  →"
 	local isFinal=state=="FINAL_CHOICE"
-	self.cardTitle.Text=if own then (if isFinal then "FINAL  /  KEEP OR SWAP" else t("curator")) else t("vote")
-	self.amount.Text=if isFinal then string.format("%02d  /  %02d",s.claimId or 0,s.finalId or 0) else Numbers.formatNumber(s.offer).." CR"
+	self.cardTitle.Text=if state=="OFFER_ROLL" then t("rolling_title")elseif own then (if isFinal then "FINAL  /  KEEP OR SWAP" else t("curator")) else t("vote")
+	self.amount.Text=if isFinal then string.format("%02d  /  %02d",s.claimId or 0,s.finalId or 0) elseif state=="OFFER_ROLL"then Numbers.formatNumber(Show.counter(s.offer,s.phaseStartedAt,s.deadline,workspace:GetServerTimeNow(),model.settings.reducedMotion)).." CR"else Numbers.formatNumber(s.offer).." CR"
 	self.possible.Text=if isFinal then t("final_body") else t("possible",{min=Numbers.formatNumber(s.remaining[1] or 0),max=Numbers.formatNumber(s.remaining[#s.remaining] or 0)})
 	local leftKey,rightKey=if isFinal then "keep" else "extract",if isFinal then "swap" else "push"
 	self.left.Text,self.right.Text=t(leftKey),t(rightKey)
@@ -187,7 +203,7 @@ function Run:render(model,t)
 	self.lifeline.Text=if s.lifelineAvailable then t("lifeline_ready") else t("lifeline_used")
 	self.consensus.Visible=not self.stacked and not self.touchShort and s.consensus~=nil and state=="OFFER"
 	self.consensus.Text=if s.consensus then t("consensus_"..string.lower(s.consensus)) else ""
-	self.feedback.Visible=s.lastBreach~=nil and (state=="BREACH" or state=="OPENING" or state=="TRANSITION")
+	self.feedback.Visible=s.lastBreach~=nil and (state=="BREACH_REACT" or state=="BREACH" or state=="OPENING" or state=="TRANSITION")
 	if s.lastBreach then
 		self.feedbackTitle.Text=t("opened",{n=Numbers.formatNumber(s.lastBreach.value)})
 		self.feedbackTitle.TextColor3=if s.lastBreach.value>=2500 then C.Red else C.Teal
@@ -195,7 +211,7 @@ function Run:render(model,t)
 	end
 	self.help.Text=if not own then t("vote_note") elseif offerState then (if model.touch then t("decision_touch") else t("decision_keys")) elseif model.touch then t("touch_hint") else t("move_hint")
 	self.leave.Text=if own then t("leave_run") else t("return_lobby")
-	self.leave.Visible=state~="RESULT" and not model.touch
+	self.leave.Visible=state~="RESULT"and state~="SHOWTIME"and not model.touch
 	if self.stacked or self.touchShort then
 		if s.consensus and state=="OFFER" then self.body.Text=t("consensus_"..string.lower(s.consensus))
 		elseif own and s.lifelineAvailable then self.body.Text=t("lifeline_ready") end
@@ -208,6 +224,11 @@ function Run:render(model,t)
 end
 function Run:tick(now)
 	if not self.s or not self.card.Visible then return end
+	if self.s.state=="OFFER_ROLL"then
+		self.amount.Text=Numbers.formatNumber(Show.counter(self.s.offer,self.s.phaseStartedAt,self.s.deadline,now,UI.reducedMotion)).." CR"
+		self.clock.Text="…";self.fill.Size=UDim2.fromScale(Show.progress(self.s.phaseStartedAt,self.s.deadline,now),1)
+		self.clock.TextColor3,self.fill.BackgroundColor3=C.Amber,C.Amber;return
+	end
 	local remaining=math.max(0,self.s.deadline-now)
 	self.clock.Text=string.format("%02ds",math.ceil(remaining))
 	local color=if remaining<=5 then C.Red else C.Amber

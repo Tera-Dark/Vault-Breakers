@@ -39,7 +39,7 @@ Vault Breakers 不是「点击金库拿奖励」。选手守着未知底牌，�
 - 菜单：Fredoka One 粗体品牌、厚描边与金/青/蓝入口卡片，选择舞台 / 开始游戏 / 观战；原生 ViewportFrame 内使用原创的金库、方块角色和摄像机缩略模型。三张图总计 205 个本地零件，首次打开才构建并长期复用，不克隆运行中场地/其他玩家，不访问隐藏值。
 - M、右上角按钮、手柄方向键上/B 提供明确的开关。关闭与返回菜单分开；菜单状态不从 Directory/Snapshot 推导，普通同步和回大厅不强制展开。开始/观战立即收起，排队提示独立于菜单。
 - 子页面：选场、玩法、个人/本服纪录、设置；每页可一键回游戏。在手机竖屏需要时只滚动菜单内容，关闭控件固定在安全区；常见矮横屏保留三张卡和 44px 次级按钮。
-- 原对局 HUD 不被菜单行为替代：菜单打开时不暂停服务器时钟，显示未暂停/倒计时提示，关闭后恢复局内操作。没有顺便添加商店、背包、兑换码或付费进度。
+- 原对局 HUD 不被菜单行为替代：菜单打开时不暂停服务器时钟，显示未暂停/倒计时提示，关闭后恢复局内操作。本轮后续仅在纪录下增加固定积分的纯外观，不添加 Robux 商城、随机箱或付费进度。
 - 局内：先看身份/阶段，再看剩余奖池，最后聚焦报价/选择。排除的金额划线且降对比；底牌和已锁定 Heat 单独标识。
 - 观众和选手使用不同文案/权限；投票不会变成选手操作。
 - 矮横屏触摸布局把奖池做成顶部两行，选择区移到右下，给左下移动输入留空间。主要按钮高至少 44 像素。
@@ -49,9 +49,10 @@ Vault Breakers 不是「点击金库拿奖励」。选手守着未知底牌，�
 ## 权威流程
 
 ```text
-IDLE → CLAIM → BREACH ⇄ OPENING
+IDLE → SHOWTIME（仅 Main，可跳过）→ CLAIM
+                     BREACH → OPENING → BREACH_REACT
                       ↓ 配额完成
-                    OFFER ⇄ LIFELINE（主舞台一次）
+              OFFER_ROLL → OFFER ⇄ LIFELINE（主舞台一次）
                       ↓ PUSH
                  TRANSITION → 下一轮 BREACH
                       ↓ 第四次 PUSH
@@ -72,13 +73,13 @@ EXTRACT ───────────→ REVEAL → RESULT → IDLE
 
 切换观看范围会先处理原场时钟并撤回旧票。死亡/角色移除释放场地且断开旧角色监听；关闭服务器后不再接受新操作。
 
-相机仅在找到目标后缓存成功状态，检测 CurrentCamera 替换并分别还原相机/FOV；客户端以 0.2 秒间隔尝试恢复，不逐帧重建 UI。提示缓存仅保存约 32 个 ProximityPrompt，监听后到/移除对象，并以 1 秒兜底刷新后到属性；菜单、子页面、复盘与同步等待统一关闭实体输入。退出菜单时清除本 UI 的手柄焦点并撤销 Modal 鼠标释放状态；聊天输入和已处理的键盘事件不抢键。服务端距离/身份/时钟验证仍是最终防线。
+相机仅在找到目标后缓存成功状态，检测 CurrentCamera 替换并分别还原相机/FOV；客户端以 0.2 秒间隔尝试恢复，不逐帧重建 UI。提示缓存仅保存约 44 个 ProximityPrompt（含沙发），监听后到/移除对象，并以 1 秒兜底刷新后到属性；菜单、子页面、复盘与同步等待统一关闭实体输入。退出菜单时清除本 UI 的手柄焦点并撤销 Modal 鼠标释放状态；聊天输入和已处理的键盘事件不抢键。服务端距离/身份/时钟验证仍是最终防线。
 
 ### 公开信息边界
 
 客户端可以知道**剩余金额集合**，但不能知道每个未开金库对应哪个金额。开门动画中、揭晓动画中、晚加入快照中仍遵守这个边界。只有阶段结束时才公开相应值，RESULT 才公开完整映射。镜头只拿到 `revealId`，不提前拿到底牌金额。
 
-5 个事件：`Action / Snapshot / Directory / Profile / Notice`。没有让客户端指定奖金额度、任意角色、任意结算或任意领取物品的接口。输入限流是突发 10、每秒恢复 5；服务器镜头/UI 本地隐藏并非权限防线，权限仍在服务器。
+6 个事件：`Action / Snapshot / Directory / Profile / Notice / Reaction`。没有让客户端指定奖金额度、任意角色、任意结算或任意领取物品的接口。输入限流是突发 10、每秒恢复 5；服务器镜头/UI 本地隐藏并非权限防线，权限仍在服务器。
 
 ### 决策质量，而非运气评价
 
@@ -93,7 +94,7 @@ EXTRACT ───────────→ REVEAL → RESULT → IDLE
 
 ## 数据与榜单
 
-- 档案新增 v2 嵌套 profile。旧 `cash / careerMatches / careerEarnings` 分别迁移为 Credits / 局数 / 历史最佳字段；旧格式无法准确拆分 EXTRACT、最终选择与倍率，保留历史值而不伪造详细历史。
+- 档案为 v3 嵌套 profile，包含已拥有的外观、头衔、装备与正向决策类型计数；v2 统计保留，未知/更高版本拒绝写回。旧 `cash / careerMatches / careerEarnings` 分别迁移为 Credits / 局数 / 历史最佳字段；旧格式无法准确拆分 EXTRACT、最终选择与倍率，保留历史值而不伪造详细历史。
 - 旧根层库存、通行证与未知字段仍保留；新 UI 不暴露这些不属于本版规则的功能。
 - 决策质量分没有可靠旧记录可继承，因此 Heat 从新质量分计算，不凭旧奖金追认「好决策」。
 - 加载失败/锁冲突：临时模式、禁止写回。暂时保存失败：`SAVE_DELAYED`，提示并保留内存数据等待重试。锁丢失：停止写入。
@@ -102,12 +103,24 @@ EXTRACT ───────────→ REVEAL → RESULT → IDLE
 
 ## 测试工具的边界
 
-`check.mjs` 使用固定版本的 Luau WASM 编译并执行真实规则模块。`contract-check.mjs` 的 integration / resilience / menu 三套测试执行真实 Main 与 ClientMain，但依赖自行实现的 Roblox doubles，反射 fixture 来自 Roblox Client Tracker API blob `ffaefea669c2a882496dc9d5183b3db146e251db`。
+`check.mjs` 使用固定版本的 Luau WASM 编译并执行真实规则模块。`contract-check.mjs` 的 integration / resilience / menu / experience 四套测试执行真实 Main 与 ClientMain，但依赖自行实现的 Roblox doubles，反射 fixture 来自 Roblox Client Tracker API blob `ffaefea669c2a882496dc9d5183b3db146e251db`。
 
-现有 21 组规则、7 组客户端纯状态、16 组入口/布局、17 组边界、9 组菜单交互测试；后三套使用复制的传输/存档 payload、手动控制消息交付、可延迟的存档请求与可暂停 Heartbeat 的时钟。它们仍不模拟 Roblox 的真正跨客户端传输或后端事务。
+现有 21 组规则、7 组客户端纯状态、16 组入口/布局、17 组边界、9 组菜单、10 组演出/进度纯逻辑、16 组新体验契约，合计 96 组；后四套使用复制的传输/存档 payload、手动控制消息交付、可延迟的存档请求与可暂停 Heartbeat 的时钟。它们仍不模拟 Roblox 的真正跨客户端传输或后端事务。
 
-`StudioChecks` 只在 Studio 接受手动调用，读取对象、原生 TextBounds 和按钮边界，返回报告并输出问题；不访问 DataStore，不自动操作玩家。零个问题也不是整体验收通过，必须独立完成输入、碰撞、多人和真实存档检查。
+`StudioChecks` 只在 Studio 接受手动调用，读取对象、原生 TextBounds、按钮边界和音频加载状态，返回报告并输出问题；不访问 DataStore，不自动操作玩家。零个问题也不是整体验收通过，必须独立完成输入、碰撞、多人和真实存档检查。
 
 WASM 自带约 17 MiB 固定堆不够容纳两套模拟场景/GUI，测试入口通过 Emscripten 的实例化 hook 把内存声明扩大为 64 MiB，不改 Luau 字节码。这是测试运行器配置，**不是 Roblox 游戏内存占用数据**。
 
 离线图片由生产几何/GUI 坐标生成，使用简化深度测试与替代字体；仅对 ViewportFrame 的原生缩略模型、描边和渐变做近似绘制，不提供 Roblox 光照、SurfaceGui、真实字体尺寸、角色/PlayerModule 相机或原生 ViewportFrame 渲染。所有图片应标注「离线检查」，不得作为游戏实机截图发布。
+
+## 本轮节目与社交架构
+
+- `ShowRules` 只计算表现档位和滚动插值，不参与奖励或质量评分。`SHOWTIME / BREACH_REACT / OFFER_ROLL` 为真实服务器阶段，动画不会吞掉决策时间。
+- `StagePresentationController` 只修改对应舞台的本地灯位/引导和手轮装饰；不改全局 Lighting。彩带有限额，失去舞台/换局会清理；减少动态效果不产生动态脉冲。
+- `BroadcastState` 从公开快照显式挑选字段。`LiveBroadcast` 是 SurfaceGui 赛况屏，不复制整套舞台或声称已实现视频摄像机直播。
+- `ReactionRules` 是预设/限流门禁，`Reaction` 事件只向相关场地传播；不接受自由文本，不修改投票、Heat 或奖励。沙发摄像机依赖主动提示意图，普通 Seat 接触不授权夺取视角。
+- `ProgressionRules` 将运气收藏与决策评价分开；`CosmeticCatalog` 只有名称、价格、RGB，没有奖池/计时/倍率字段。购买在服务器无 yield 地校验/扣款/解锁，保存与公开快照深复制嵌套集合。
+- `HallController` 每展台异步加载一次当前赢家，清理脚本/物理，设置尺寸/零件上限，并按请求代次丢弃旧模型。
+- `HistoryService` 默认禁用，只接受真实完成记录，用 max 写入 OrderedDataStore、合并写入/缓存读取；失败时缓存或清楚回退为本服，不伪造历史总榜。
+
+详细操作、配置和原生验收边界见 [本轮交付](本轮交付.md)。

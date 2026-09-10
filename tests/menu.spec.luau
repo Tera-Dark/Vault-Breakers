@@ -53,13 +53,14 @@ local function tick(e)Mock.advance(math.max(0,e.deadline-Mock.time)+.001)end
 local function startOffer()
 	app.actions.play("MAIN");Mock.advance(.2)
 	local e,stage=Mock.engines.MAIN,Mock.world.arenas.MAIN
+	Mock.finishShow(e,true)
 	eq(e.breakerId,player.UserId)
 	player.Character.HumanoidRootPart.CFrame=stage.vaults[1].anchor.CFrame;stage.vaults[1].prompt.Triggered:Fire(player)
 	while e.state=="BREACH"do
 		for i,vault in e.vaults do if not vault.claimed and not vault.opened then
 			player.Character.HumanoidRootPart.CFrame=stage.vaults[i].anchor.CFrame;stage.vaults[i].prompt.Triggered:Fire(player);break
 		end end
-		tick(e)
+		tick(e);Mock.finishShow(e)
 	end
 	eq(e.state,"OFFER");return e
 end

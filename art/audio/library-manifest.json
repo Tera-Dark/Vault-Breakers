@@ -1,0 +1,118 @@
+{
+  "metadataCheckedDate": "2026-09-10",
+  "method": "Read Roblox public economy asset metadata and Creator Store toolbox search; not a playback or listening test.",
+  "studioPlaybackValidated": false,
+  "auditioned": false,
+  "usage": "Creator Store partner audio for Roblox experiences, subject to applicable platform/provider terms. IsPublicDomain below is the API distribution flag, not a declaration of copyright-free/public-domain licensing. Third-party audio files are not redistributed in this repository.",
+  "docs": "https://create.roblox.com/docs/audio/assets",
+  "assets": [
+    {
+      "id": 9116324156,
+      "name": "Lock Unlock Door 10 (SFX)",
+      "creator": "ProSoundEffects",
+      "creatorId": 7462895450,
+      "assetTypeId": 3,
+      "apiIsPublicDomain": true,
+      "durationFromDescription": 1.9,
+      "roles": [
+        "Claim"
+      ],
+      "metadataUrl": "https://economy.roblox.com/v2/assets/9116324156/details",
+      "storeUrl": "https://create.roblox.com/store/asset/9116324156",
+      "nativePlaybackVerified": false
+    },
+    {
+      "id": 9116604303,
+      "name": "Metal Door Creak 2 (SFX)",
+      "creator": "ProSoundEffects",
+      "creatorId": 7462895450,
+      "assetTypeId": 3,
+      "apiIsPublicDomain": true,
+      "durationFromDescription": 1.1,
+      "roles": [
+        "Breach"
+      ],
+      "metadataUrl": "https://economy.roblox.com/v2/assets/9116604303/details",
+      "storeUrl": "https://create.roblox.com/store/asset/9116604303",
+      "nativePlaybackVerified": false
+    },
+    {
+      "id": 9119882039,
+      "name": "Synth Whomps 38 (SFX)",
+      "creator": "ProSoundEffects",
+      "creatorId": 7462895450,
+      "assetTypeId": 3,
+      "apiIsPublicDomain": true,
+      "durationFromDescription": 1.1,
+      "roles": [
+        "Offer",
+        "Impact",
+        "Heartbeat"
+      ],
+      "metadataUrl": "https://economy.roblox.com/v2/assets/9119882039/details",
+      "storeUrl": "https://create.roblox.com/store/asset/9119882039",
+      "nativePlaybackVerified": false
+    },
+    {
+      "id": 9112766176,
+      "name": "Crowd Cheer And Applause 1 (SFX)",
+      "creator": "ProSoundEffects",
+      "creatorId": 7462895450,
+      "assetTypeId": 3,
+      "apiIsPublicDomain": true,
+      "durationFromDescription": 41.5,
+      "roles": [
+        "Cheer"
+      ],
+      "metadataUrl": "https://economy.roblox.com/v2/assets/9112766176/details",
+      "storeUrl": "https://create.roblox.com/store/asset/9112766176",
+      "nativePlaybackVerified": false
+    },
+    {
+      "id": 9125572450,
+      "name": "Gasps Male Deep Breaths Fast Pants Frightened 8 (SFX)",
+      "creator": "ProSoundEffects",
+      "creatorId": 7462895450,
+      "assetTypeId": 3,
+      "apiIsPublicDomain": true,
+      "durationFromDescription": 1.6,
+      "roles": [
+        "Gasp"
+      ],
+      "metadataUrl": "https://economy.roblox.com/v2/assets/9125572450/details",
+      "storeUrl": "https://create.roblox.com/store/asset/9125572450",
+      "nativePlaybackVerified": false
+    },
+    {
+      "id": 1837835644,
+      "name": "DRONE-Dark Desire",
+      "creator": "APMOfficial",
+      "creatorId": 7462718749,
+      "assetTypeId": 3,
+      "apiIsPublicDomain": true,
+      "durationFromDescription": null,
+      "roles": [
+        "Music"
+      ],
+      "metadataUrl": "https://economy.roblox.com/v2/assets/1837835644/details",
+      "storeUrl": "https://create.roblox.com/store/asset/1837835644",
+      "nativePlaybackVerified": false
+    },
+    {
+      "id": 1844584698,
+      "name": "Winner",
+      "creator": "APMOfficial",
+      "creatorId": 7462718749,
+      "assetTypeId": 3,
+      "apiIsPublicDomain": true,
+      "durationFromDescription": null,
+      "roles": [
+        "Reveal",
+        "Showtime"
+      ],
+      "metadataUrl": "https://economy.roblox.com/v2/assets/1844584698/details",
+      "storeUrl": "https://create.roblox.com/store/asset/1844584698",
+      "nativePlaybackVerified": false
+    }
+  ]
+}

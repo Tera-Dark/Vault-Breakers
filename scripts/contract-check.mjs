@@ -24,8 +24,9 @@ for(const p of sources){
 }
 bundle+=`require=function(node) assert(node and node._modulePath,"require expects a mapped ModuleScript");local p=node._modulePath;if cache[p]==nil then cache[p]=factories[p](node) end;return cache[p] end\n`;
 bundle+='\n'+fs.readFileSync(path.join(root,'tests/ui-capture.luau'),'utf8');
+bundle+='\n'+fs.readFileSync(path.join(root,'tests/phase-driver.luau'),'utf8');
 const suite=process.argv[2] || 'integration';
-if(!['integration','resilience','menu'].includes(suite))throw new Error('Unknown contract suite');
+if(!['integration','resilience','menu','experience'].includes(suite))throw new Error('Unknown contract suite');
 bundle+=fs.readFileSync(path.join(root,`tests/${suite}.spec.luau`),'utf8');
 const state=await LuauState.createAsync({print:(...a)=>console.log(...a),warn:(...a)=>console.warn(...a),captureScene: scene=>fs.writeFileSync(path.join(root,'.cache/scene.json'),scene),captureLayout:(name,scene)=>fs.writeFileSync(path.join(root,`.cache/layout-${name}.json`),scene)});
 try{await state.loadstring(bundle,'roblox-contract-check',true)();}catch(error){console.error(error);process.exitCode=1;}finally{state.destroy();}

@@ -29,6 +29,7 @@ function PromptController:allows(prompt)
 		local vaultModel=parent and parent.Parent
 		local vaultId=vaultModel and vaultModel:GetAttribute("VaultId")
 		local vault=vaultId and s.vaults[vaultId]
+		if s.state=="FINAL_CHOICE"then return vaultId==s.claimId or vaultId==s.finalId end
 		return (s.state=="CLAIM" or s.state=="BREACH") and vault and not vault.opened and not vault.claimed
 	elseif prompt.Name=="LifelinePrompt" then return s.lifelineAvailable==true
 	elseif prompt.Name:find("DecisionPrompt") then return s.state=="OFFER" or s.state=="FINAL_CHOICE" end
@@ -59,6 +60,11 @@ function PromptController:update(snapshot,language,blocked)
 		prompt.Enabled=self:allows(prompt)==true
 		if prompt.Name=="VaultPrompt" then
 			local claim=snapshot and snapshot.state=="CLAIM"
+			if snapshot and snapshot.state=="FINAL_CHOICE"then
+				local keep=prompt.Parent.Parent:GetAttribute("VaultId")==snapshot.claimId
+				prompt.ActionText=if language=="zh"then(if keep then "保留底牌"else "交换金库")else(if keep then "Keep claim"else "Swap vault")
+				continue
+			end
 			prompt.ActionText=if language=="zh" then (if claim then "锁定底牌" else "开启并排除") else (if claim then "Claim vault" else "Breach vault")
 		end
 	end

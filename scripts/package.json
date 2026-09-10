@@ -3,11 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node check.mjs && node contract-check.mjs && node contract-check.mjs resilience && node contract-check.mjs menu",
+    "test": "node check.mjs && node contract-check.mjs && node contract-check.mjs resilience && node contract-check.mjs menu && node contract-check.mjs experience",
     "test:core": "node check.mjs",
-    "test:contracts": "node contract-check.mjs && node contract-check.mjs resilience && node contract-check.mjs menu",
+    "test:contracts": "node contract-check.mjs && node contract-check.mjs resilience && node contract-check.mjs menu && node contract-check.mjs experience",
     "test:resilience": "node contract-check.mjs resilience",
-    "test:menu": "node contract-check.mjs menu"
+    "test:menu": "node contract-check.mjs menu",
+    "test:experience": "node contract-check.mjs experience"
   },
   "devDependencies": {
     "luau-web": "1.4.0"

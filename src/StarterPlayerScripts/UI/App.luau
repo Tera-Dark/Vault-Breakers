@@ -6,6 +6,7 @@ local Menu=require(script.Parent.LobbyView)
 local Run=require(script.Parent.RunView)
 local Result=require(script.Parent.ResultView)
 local Overlay=require(script.Parent.OverlayView)
+local Social=require(script.Parent.SocialView)
 local Numbers=require(game:GetService("ReplicatedStorage").VaultBreakers.Config.RewardPool)
 local C=UI.colors
 local App={}
@@ -48,6 +49,7 @@ function App.new(playerGui,model,actions)
 	self.toast=UI.card(self.root,"Toast",C.Panel);self.toast.ZIndex=150;self.toast.Visible=false
 	self.toastText=UI.text(self.toast,"Message","",14,C.Ivory)
 	self.overlay=Overlay.new(self.root,actions)
+	self.social=Social.new(self.root,actions)
 	self.root:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()self:resize()end)
 	task.defer(function()self:resize();self:render()end)
 	return self
@@ -56,7 +58,7 @@ function App:t(key,args)return Locale.text(self.model.settings.language,key,args
 function App:isMenuVisible()
 	return self.model.menuOpen==true or self.overlayMode~=nil or self.model.showRecap==true
 end
-function App:blocksActions()return self:isMenuVisible()or self.model.syncing==true end
+function App:blocksActions()return self:isMenuVisible()or self.model.syncing==true or(self.social and self.social.open)==true end
 function App:releaseFocus()
 	local selected=GuiService.SelectedObject
 	while selected do
@@ -85,7 +87,7 @@ function App:resize()
 	self.lobby:resize(menuW-8,menuH,short)
 	self.lobbyScroll.CanvasSize=UDim2.fromOffset(0,math.max(menuH,self.lobby.contentHeight))
 	self.lobbyScroll.ScrollingEnabled=self.lobby.contentHeight>menuH
-	self.run.touch=self.model.touch;self.run:resize(w,h);self.result:resize(w,h);self.overlay:resize(w,h)
+	self.run.touch=self.model.touch;self.run:resize(w,h);self.result:resize(w,h);self.overlay:resize(w,h);self.social:resize(w,h)
 	local waitingW=math.min(400,w-32)
 	UI.place(self.waiting,(w-waitingW)/2,90,waitingW,80)
 	UI.place(self.waitingTitle,16,9,waitingW-32,27);UI.place(self.waitingBody,16,38,waitingW-32,33)
@@ -155,6 +157,7 @@ function App:render()
 	self.banner.Visible=(p.status=="SESSION_ONLY"or p.status=="SAVE_DELAYED")and not inRun and not self:isMenuVisible()
 	self.bannerText.Text=t(if p.status=="SAVE_DELAYED"then"save_delayed"else"session_only")
 	self:layoutHUD(inRun)
+	self.social:render(model,t,self:isMenuVisible()or model.syncing==true)
 end
 function App:showOverlay(mode)
 	self.overlayMode=mode

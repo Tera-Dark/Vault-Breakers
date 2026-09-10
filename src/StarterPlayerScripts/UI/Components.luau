@@ -63,7 +63,7 @@ end
 -- Chunky menu controls, separate from the restrained in-run decision HUD.
 function UI.gameButton(parent,name,text,style,callback)
 	local button=UI.button(parent,name,text,style,callback)
-	button.Font=Enum.Font.FredokaOne
+	button.Font=if text=="←"or text=="×"or text=="…"then Enum.Font.GothamBold else Enum.Font.FredokaOne
 	button.TextSize=19
 	local outline=button:FindFirstChildOfClass("UIStroke")
 	outline.Thickness=2;outline.Transparency=0

@@ -18,7 +18,7 @@ function RunEngine.new(arena: AnyMap, dependencies: AnyMap): any
 	self.state, self.breakerName = "IDLE", ""
 	self.breakerId, self.claimId = nil, nil
 	self.round, self.breached, self.offer, self.ev = 0, 0, 0, 0
-	self.deadline, self.heat = 0, 1
+	self.deadline, self.heat, self.phaseStartedAt = 0, 1, 0
 	self.vaults, self.decisions, self.votes, self.events = {}, {}, {}, {}
 	self.lifelineUsed, self.dirty = false, true
 	return self
@@ -35,6 +35,7 @@ end
 
 function RunEngine._state(self: any, state: string, now: number, seconds: number?)
 	self.state = state
+	self.phaseStartedAt = now
 	self.phaseId += 1
 	self.deadline = if seconds then now + seconds else 0
 	self:_emit("STATE", { state = state })
@@ -64,6 +65,7 @@ function RunEngine.start(self: any, player: AnyMap, now: number): (boolean, stri
 	if self.state ~= "IDLE" then return false, "arena_busy" end
 	self.runId += 1
 	self.breakerId, self.breakerName = player.id, player.name
+	self.cosmeticId, self.titleId = player.cosmeticId or "CLASSIC", player.titleId or ""
 	self.heat = math.clamp(player.heat or 1, 1, 2) -- locked for this entire run
 	self.claimId, self.result, self.lastBreach, self.finalId = nil, nil, nil, nil
 	self.lifelineUsed, self.consensus, self.automatic = false, nil, false
@@ -79,7 +81,14 @@ function RunEngine.start(self: any, player: AnyMap, now: number): (boolean, stri
 		table.insert(self.vaults, { id = index, value = value, opened = false, claimed = false })
 	end
 	self:_emit("START", { playerId = player.id })
-	self:_state("CLAIM", now, self.config.CLAIM_SECONDS)
+	self:_state(if self.arena.audience then "SHOWTIME" else "CLAIM", now, if self.arena.audience then self.config.SHOWTIME_SECONDS else self.config.CLAIM_SECONDS)
+	return true
+end
+
+function RunEngine.skipShowtime(self: any, playerId: number, now: number): (boolean, string?)
+	if playerId~=self.breakerId or self.state~="SHOWTIME" then return false,"invalid_action" end
+	if self:_inputExpired(now) then return false,"stale_action" end
+	self:_state("CLAIM",now,self.config.CLAIM_SECONDS)
 	return true
 end
 
@@ -122,7 +131,7 @@ end
 function RunEngine._presentOffer(self: any, now: number)
 	self.offer, self.ev = self.offers.calculateOffer(self.round, self:_remaining(), self.random)
 	self.votes, self.consensus, self.automatic = {}, nil, false
-	self:_state("OFFER", now, self.config.PRESSURE_CLOCK_SECONDS)
+	self:_state("OFFER_ROLL", now, self.config.OFFER_ROLL_SECONDS)
 	self:_emit("OFFER", { amount = self.offer })
 end
 
@@ -207,6 +216,7 @@ end
 
 function RunEngine._settle(self: any, now: number)
 	self.result = {
+		arenaId=self.arena.id,runId=self.runId,
 		breakerId = self.breakerId, breakerName = self.breakerName,
 		extracted = self.extracted, baseCredits = self.baseCredits,
 		credits = math.floor(self.baseCredits * self.heat + 0.5), heat = self.heat,
@@ -248,14 +258,20 @@ end
 
 function RunEngine.step(self: any, now: number)
 	if self.deadline == 0 or now < self.deadline then return end
-	if self.state == "CLAIM" or self.state == "BREACH" then
+	if self.state == "SHOWTIME" then
+		self:_state("CLAIM",now,self.config.CLAIM_SECONDS)
+	elseif self.state == "OFFER_ROLL" then
+		self:_state("OFFER",now,self.config.PRESSURE_CLOCK_SECONDS)
+	elseif self.state == "CLAIM" or self.state == "BREACH" then
 		self:release(now, "inactive") -- never let an AFK player occupy an arena forever
 	elseif self.state == "OPENING" then
 		local vault = self.vaults[self.pendingId]
 		vault.opened = true
 		self.breached += 1
-		self.lastBreach = { id = vault.id, value = vault.value }
+		self.lastBreach = { id = vault.id, value = vault.value, at = now }
 		self:_emit("BREACHED", { vaultId = vault.id, value = vault.value })
+		self:_state("BREACH_REACT",now,if self.arena.audience then self.config.BREACH_REACTION_SECONDS else self.config.QUICK_REACTION_SECONDS)
+	elseif self.state == "BREACH_REACT" then
 		if self.breached == self.config.ROUNDS[self.round].vaultsToBreach then
 			assert(#self:_remaining() == self.config.ROUNDS[self.round].targetRemaining)
 			self:_presentOffer(now)
@@ -307,7 +323,8 @@ function RunEngine.snapshot(self: any, viewerId: number?): AnyMap
 		round = self.round, claimId = self.claimId, breached = self.breached,
 		quota = if self.round > 0 then self.config.ROUNDS[self.round].vaultsToBreach else 0,
 		remaining = self:_remaining(), vaults = vaults, offer = self.offer,
-		deadline = self.deadline, heat = self.heat, audience = self.arena.audience,
+		deadline = self.deadline, phaseStartedAt = self.phaseStartedAt, heat = self.heat, audience = self.arena.audience,
+		cosmeticId = self.cosmeticId, titleId = self.titleId,
 		lifelineAvailable = self:canLifeline(), lifelineUsed = self.lifelineUsed,
 		poll = self:_poll(viewerId), consensus = self.consensus,
 		lastBreach = self.lastBreach, result = self.result, finalId = self.finalId,

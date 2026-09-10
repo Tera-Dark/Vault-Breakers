@@ -2,6 +2,7 @@
 -- A summonable game menu, not a lobby page. The world remains the primary view.
 local UI=require(script.Parent.Components)
 local Preview=require(script.Parent.VaultPreview)
+local Catalog=require(game:GetService("ReplicatedStorage").VaultBreakers.Config.CosmeticCatalog)
 local C=UI.colors
 local Menu={}
 Menu.__index=Menu
@@ -131,7 +132,7 @@ function Menu:render(model,t)
 		item.strip.BackgroundColor3=if disabled then item.accent:Lerp(C.Ink,.6)else item.accent
 		item.title.TextColor3=if disabled then C.Muted else C.Ink
 		item.caption.TextColor3=item.title.TextColor3
-		if model.menuOpen then Preview.prepare(item.preview)end
+		if model.menuOpen then Preview.prepare(item.preview);Preview.style(item.preview,profile.equippedCosmetic or "CLASSIC",Catalog.ITEMS[profile.equippedCosmetic or"CLASSIC"])end
 	end
 	self.context.Visible=self.resume or self.queued or (directory and directory.view~="LOBBY")or false
 	self.context.Text=if self.queued then t("cancel_queue")elseif self.resume then t("leave_run")else t("return_lobby")

@@ -101,6 +101,7 @@ local function inherits(class,target)
 end
 local function default(object,key,kind)
 	if key=="TextStrokeTransparency" then return 1 end
+	if key=="IsLoaded"then return not Mock.audioFailure end
 	if key=="Name" then return object._class end
 	if key=="Visible" or key=="Enabled" then return true end
 	if key=="Health" then return 100 end
@@ -129,6 +130,7 @@ instMeta.__index=function(object,key)
 	if methods[key] then return methods[key] end
 	if key=="Position" and object:IsA("BasePart") then return object.CFrame.Position end
 	if key=="AbsoluteSize" then
+		if object:IsA("SurfaceGui")then return object.CanvasSize end
 		if object:IsA("ScreenGui") then return Vector2.new(table.unpack(Mock.viewport)) end
 		local p=object.Parent;local base=if p then p.AbsoluteSize else Vector2.new(table.unpack(Mock.viewport))
 		local size=object.Size;return Vector2.new(base.X*size.X.Scale+size.X.Offset,base.Y*size.Y.Scale+size.Y.Offset)
@@ -171,6 +173,10 @@ instMeta.__newindex=function(object,key,value)
 		object._properties.Parent=value
 		if value then table.insert(value._children,object);if value._signals.ChildAdded then value.ChildAdded:Fire(object)end end
 		notify(value,"DescendantAdded")
+	elseif key=="Sit"and object:IsA("Humanoid")and value==false then
+		local seat=object._properties.SeatPart
+		object._properties.Sit=false;object._properties.SeatPart=nil
+		if seat then seat._properties.Occupant=nil;object.Seated:Fire(false,seat)end
 	elseif key=="Position" and object:IsA("BasePart") then
 		object._properties.CFrame=cf(value,object.CFrame.r)
 	else object._properties[key]=value end
@@ -192,7 +198,18 @@ end
 function methods:FindFirstChildOfClass(class)for _,child in self._children do if child.ClassName==class then return child end end end
 function methods:GetFullName()return if self.Parent then self.Parent:GetFullName().."."..self.Name else self.Name end
 function methods:GetAttribute(name)return self._attributes[name]end
-function methods:SetAttribute(name,value)self._attributes[name]=value end
+function methods:SetAttribute(name,value)
+	local previous=self._attributes[name];self._attributes[name]=value
+	if previous~=value and self._signals["Attribute:"..name]then self._signals["Attribute:"..name]:Fire()end
+end
+function methods:GetAttributeChangedSignal(name)
+	local key="Attribute:"..name;if not self._signals[key]then self._signals[key]=signal()end;return self._signals[key]
+end
+function methods:Sit(humanoid)
+	if Mock.seatFailure then return end
+	self._properties.Occupant=humanoid;humanoid._properties.SeatPart=self;humanoid._properties.Sit=true
+	humanoid.Seated:Fire(true,self)
+end
 function methods:GetPropertyChangedSignal(key)
 	assert(member(self._class,"properties",key),"Unknown property signal "..self._class.."."..key)
 	local name="Property:"..key;if not self._signals[name] then self._signals[name]=signal()end;return self._signals[name]
@@ -238,6 +255,24 @@ function methods:PivotTo(target)
 	for _,part in self:GetDescendants()do if part:IsA("BasePart")then part.CFrame=delta*part.CFrame end end
 	self.WorldPivot=target
 end
+function methods:PreloadAsync(items)
+	if Mock.audioFailure then error("Injected audio load failure")end
+	for _,sound in items do sound._properties.IsLoaded=true;if sound._signals.Loaded then sound.Loaded:Fire()end end
+end
+function methods:GetScale()return rawget(self,"_modelScale")or 1 end
+function methods:ScaleTo(scale)
+	local factor=scale/self:GetScale();local pivot=self:GetPivot()
+	for _,part in self:GetDescendants()do if part:IsA("BasePart")then part.Size=part.Size*factor;part.CFrame=cf(pivot.Position+(part.Position-pivot.Position)*factor,part.CFrame.r)end end
+	self._modelScale=scale
+end
+function methods:CreateHumanoidModelFromUserIdAsync(userId)
+	if Mock.avatarDelay then task.wait(Mock.avatarDelay)end
+	if Mock.avatarFailure then error("Injected avatar failure")end
+	local model=Instance.new("Model");model.Name="TestAvatar";local h=Instance.new("Humanoid");h.Parent=model
+	for i=1,7 do local part=Instance.new("Part");part.Name=if i==1 then "HumanoidRootPart"elseif i==2 then "Head"else "Limb";part.Size=Vector3.new(1,1,1);part.CFrame=CFrame.new(0,i*.75,0);part.Parent=model;if i==1 then model.PrimaryPart=part end end
+	return model
+end
+function methods:GetNameFromUserIdAsync(userId)return "User"..userId end
 function methods:Emit()end
 function methods:Clear()end
 function methods:Play()self._properties.IsPlaying=true end
@@ -285,6 +320,25 @@ function methods:GetDataStore(name)
 		if Mock.storeDelay and Mock.storeDelay[key] then task.wait(Mock.storeDelay[key])end
 		local value=transform(Mock.copy(values[key]));if value~=nil then values[key]=Mock.copy(value) end;return Mock.copy(value)
 	end}
+end
+function methods:GetOrderedDataStore(name)
+	if Mock.storeFailure then error("OrderedDataStore unavailable")end
+	Mock.ordered=Mock.ordered or{};Mock.ordered[name]=Mock.ordered[name]or{}
+	local values=Mock.ordered[name]
+	return {
+		UpdateAsync=function(_,key,callback)
+			if Mock.orderedFailure then error("Injected ordered write failure")end
+			if Mock.orderedDelay then task.wait(Mock.orderedDelay)end
+			local value=callback(values[key]);values[key]=value;return value
+		end,
+		GetSortedAsync=function(_,ascending,count)
+			if Mock.orderedFailure then error("Injected ordered read failure")end
+			local rows={};for key,value in values do table.insert(rows,{key=key,value=value})end
+			table.sort(rows,function(a,b)return if a.value==b.value then tonumber(a.key)<tonumber(b.key)else(if ascending then a.value<b.value else a.value>b.value)end)
+			while #rows>count do table.remove(rows)end
+			return {GetCurrentPage=function()return rows end}
+		end,
+	}
 end
 Mock.closers={}
 local game=Instance.new("DataModel")

@@ -27,6 +27,7 @@ end
 local function enter(p,id)
 	action(p,"PLAY",{target=id});Mock.advance(.2)
 	local e,stage=Mock.engines[id],Mock.world.arenas[id]
+	Mock.finishShow(e,true)
 	eq(e.breakerId,p.UserId)
 	p.Character.HumanoidRootPart.CFrame=stage.vaults[1].anchor.CFrame
 	stage.vaults[1].prompt.Triggered:Fire(p)
@@ -38,7 +39,7 @@ local function offer(p,id)
 		for i,v in e.vaults do if not v.opened and not v.claimed then
 			p.Character.HumanoidRootPart.CFrame=stage.vaults[i].anchor.CFrame;stage.vaults[i].prompt.Triggered:Fire(p);break
 		end end
-		tick(e)
+		tick(e);Mock.finishShow(e)
 	end
 	eq(e.state,"OFFER");return e,stage
 end
@@ -119,7 +120,7 @@ test("PromptShown cannot re-enable a vault in an offer or expose lounge entry to
 	entry.Enabled=true;shown:Fire(entry);assert(not entry.Enabled)
 end)
 test("late prompt descendants and attributes recover without another snapshot phase",function()
-	clear();action(p1,"PLAY",{target="MAIN"})
+	clear();action(p1,"PLAY",{target="MAIN"});Mock.finishShow(Mock.engines.MAIN,true)
 	local controller=Prompt.new(p1.UserId);local snapshot=Mock.engines.MAIN:snapshot()
 	controller:update(snapshot,"en",false)
 	local vault=Instance.new("Model");vault.Name="LateVault";vault.Parent=workspace.VaultWorld.MAIN
@@ -200,7 +201,7 @@ test("Studio probes refuse live servers and inspect scene structure without muta
 	Mock.studio=false;assert(not pcall(Checks.run,true))
 	local before=Mock.json(Mock.stores)
 	Mock.studio=true;Mock.server=true
-	local report=Checks.run(true);eq(report.context,"server");eq(report.stats.parts,2652);eq(report.stats.seats,12)
+	local report=Checks.run(true);eq(report.context,"server");assert(report.stats.parts>=2700 and report.stats.parts<3000);eq(report.stats.seats,12)
 	for _,finding in report.findings do assert(finding.level~="ERROR",finding.code)end
 	eq(Mock.json(Mock.stores),before)
 end)

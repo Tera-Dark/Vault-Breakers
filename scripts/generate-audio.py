@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Original, sample-free industrial show cues. Python standard library only.
-No speech, third-party recordings or music loops. Mono PCM WAV, 44.1 kHz / 16 bit.
+No speech or third-party recordings. Includes an original loop-friendly drone and broadcast stings. Mono PCM WAV, 44.1 kHz / 16 bit.
 Use --check to validate the delivered files and their manifest without regenerating.
 """
 from pathlib import Path
@@ -40,9 +40,16 @@ def render(kind,duration):
             y=pulse(t,.05,59,26,.7)+pulse(t,.24,66,32,.39)
         elif kind=='Tick':
             y=pulse(t,0,840,79,.42)+pulse(t,.009,1230,91,.08)+n*.035*math.exp(-t*90)
-        elif kind=='Reveal':
-            y=pulse(t,0,110,3,.35)+pulse(t,.075,164.81,4,.25)+pulse(t,.15,220,4.5,.13)
-            y+=pulse(t,.4,330,8,.09)+low*.14*math.exp(-t*4)
+        elif kind in ('Reveal','Showtime'):
+            y=pulse(t,0,130.81,4,.30)+pulse(t,.16,196,5,.25)+pulse(t,.32,261.63,4,.23)+pulse(t,.48,329.63,4,.17)
+            y+=pulse(t,.62,523.25,6,.12)+pulse(t,.64,65.41,5,.28)+low*.08*math.exp(-t*4)
+        elif kind=='Impact':
+            y=pulse(t,0,48,8,.8)+pulse(t,.025,73,12,.3)+low*.5*math.exp(-t*18)
+        elif kind=='Music':
+            envelope=.75+.20*math.sin(TAU*t/duration)
+            y=(math.sin(TAU*55*t)*.11+math.sin(TAU*82.5*t)*.065+math.sin(TAU*110*t)*.028)*envelope
+            for beat in range(int(duration)):y+=pulse(t,beat+.02,55,15,.075)
+            y+=low*.015
         else:raise ValueError(kind)
         fade=min(1,t/.004,max(0,(duration-t)/.018))
         values.append(y*fade)
@@ -57,7 +64,10 @@ CUES=[
     ('Offer','curator-offer.wav',.82,'A restrained three-part broadcast signal, not a jackpot flourish.'),
     ('Heartbeat','pressure-heartbeat.wav',.96,'Low double pulse with clean silent loop boundaries.'),
     ('Tick','pressure-tick.wav',.13,'Short, softened clock contact.'),
-    ('Reveal','final-reveal.wav',1.65,'Neutral low resonance for either relief or regret; no victory fanfare.'),
+    ('Reveal','final-reveal.wav',1.65,'Short original broadcast resolution sting; completion, not a luck-based decision grade.'),
+    ('Showtime','showtime-sting.wav',1.2,'Skippable entrance sting with no spoken voice.'),
+    ('Impact','vault-impact.wav',.7,'One low, damped impact; no piercing alarm or strobe.'),
+    ('Music','low-drone-pulse.wav',8,'Original low drone pulse with silent loop boundaries; keep below speech and important cues.'),
 ]
 
 def check():

@@ -1,6 +1,7 @@
 --!nonstrict
 local UI = require(script.Parent.Components)
 local Numbers = require(game:GetService("ReplicatedStorage").VaultBreakers.Config.RewardPool)
+local Catalog=require(game:GetService("ReplicatedStorage").VaultBreakers.Config.CosmeticCatalog)
 local C = UI.colors
 local Overlay = {}
 Overlay.__index = Overlay
@@ -52,7 +53,7 @@ function Overlay:render(mode,model,t)
 		self:paragraph("VAULT BREAKERS",t("guide_note"),5,C.Muted)
 	elseif mode=="SETTINGS" then
 		self.heading.Text=t("settings")
-		for index,item in { {key="sound",hint="sound_hint",setting="sound"}, {key="motion",hint="motion_hint",setting="reducedMotion"}, {key="language",hint="language",setting="language"} } do
+		for index,item in { {key="sound",hint="sound_hint",setting="sound"}, {key="music",hint="music_hint",setting="music"}, {key="crowd",hint="crowd_hint",setting="crowd"}, {key="seat_camera",hint="seat_camera_hint",setting="seatCamera"}, {key="floor_guides",hint="floor_guides_hint",setting="floorGuides"}, {key="motion",hint="motion_hint",setting="reducedMotion"}, {key="language",hint="language",setting="language"} } do
 			local row=UI.card(self.body,"Preference"..index,C.Panel);row.LayoutOrder=index;row.Size=UDim2.new(1,-4,0,110)
 			local title=UI.text(row,"Name",t(item.key),16,C.Ivory,true);title.Position=UDim2.fromOffset(16,12);title.Size=UDim2.new(1,-145,0,26)
 			local hint=UI.text(row,"Hint",if item.setting=="language" then "中文  /  English" else t(item.hint),12,C.Muted);hint.Position=UDim2.fromOffset(16,43);hint.Size=UDim2.new(1,-150,0,55)
@@ -89,6 +90,8 @@ function Overlay:render(mode,model,t)
 		end
 	elseif mode=="BOARD" then
 		self.heading.Text=t("board")
+		local style=UI.gameButton(self.body,"OpenStyle",t("style_menu"),"secondary",function()self.actions.overlay("STYLE")end)
+		style.Size=UDim2.new(1,-4,0,48);style.LayoutOrder=-2
 		local p=model.profile or{}
 		self:paragraph(t("menu_my_record"),if p.status=="LOADING"then t("loading")else string.format("%s: %s\n%s: %s CR\n%s: %s",t("rep"),Numbers.formatNumber(p.reputation or 0),t("best"),Numbers.formatNumber(math.max(p.bestExtract or 0,p.bestFinal or 0)),t("runs"),tostring(p.runs or 0)),-1,C.Amber)
 		if model.recap and model.directory and not model.directory.myArena then
@@ -101,6 +104,41 @@ function Overlay:render(mode,model,t)
 			self:paragraph(string.format("%02d  /  %s",i,entry.name),Numbers.formatNumber(entry.best).." CR     ·     HEAT ×"..string.format("%.1f",entry.heat).."     ·     "..t("rep").." "..entry.reputation,i,if i==1 then C.Amber else C.Ivory)
 		end
 		self:paragraph("STUDIO RECORDS",t("board_note"),99,C.Muted)
+	elseif mode=="STYLE_CONFIRM"then
+		self.heading.Text=t("style_confirm")
+		local id=model.styleConfirm;local item=id and Catalog.ITEMS[id]
+		if not item then return end
+		self:paragraph(t(item.name),t("style_confirm_body",{n=Numbers.formatNumber(item.price)}),1,C.Amber)
+		local buy=UI.gameButton(self.body,"ConfirmPurchase",t("style_buy",{n=Numbers.formatNumber(item.price)}),"primary",function()self.actions.style("BUY_STYLE",id);self.actions.overlay("STYLE")end)
+		buy.Size=UDim2.new(1,-4,0,48);buy.LayoutOrder=2;UI.enabled(buy,not model.stylePending)
+		local cancel=UI.gameButton(self.body,"CancelPurchase",t("style_cancel"),"secondary",function()self.actions.overlay("STYLE")end);cancel.Size=UDim2.new(1,-4,0,48);cancel.LayoutOrder=3
+		self.defaultButton=cancel
+	elseif mode=="STYLE"then
+		self.heading.Text=t("style_menu")
+		local p=model.profile or{};local owned=p.ownedCosmetics or{};local earned=p.achievements or{}
+		self:paragraph(t("style_trim"),t("style_rules"),-1,C.Teal)
+		for i,id in Catalog.ORDER do
+			local item=Catalog.ITEMS[id];local row=UI.card(self.body,"Style"..id,C.Panel);row.Size=UDim2.new(1,-4,0,135);row.LayoutOrder=i
+			local color=if item.rgb then Color3.fromRGB(table.unpack(item.rgb))else C.Silver
+			local swatch=UI.mark(row,"WheelTone",color);UI.place(swatch,16,17,36,36)
+			local title=UI.gameText(row,"StyleName",t(item.name),18,C.Ivory);title.Position=UDim2.fromOffset(68,15);title.Size=UDim2.new(1,-84,0,27)
+			local price=UI.text(row,"Price",if owned[id]then t("style_owned")else Numbers.formatNumber(item.price).." CR",13,C.Muted);price.Position=UDim2.fromOffset(68,46);price.Size=UDim2.new(1,-84,0,23)
+			local equipped=p.equippedCosmetic==id
+			local button=UI.gameButton(row,"StyleAction",if equipped then t("style_current")elseif owned[id]then t("style_equip")else t("style_buy",{n=Numbers.formatNumber(item.price)}),if equipped then "teal"else"secondary",function()
+				if owned[id]then self.actions.style("EQUIP_STYLE",id)else self.actions.confirmStyle(id)end
+			end)
+			button.Position=UDim2.fromOffset(16,78);button.Size=UDim2.new(1,-32,0,44);button.TextSize=15
+			UI.enabled(button,not equipped and not model.stylePending and p.status~="LOADING"and(owned[id]or p.status=="READY"or p.status=="SAVE_DELAYED"))
+		end
+		self:paragraph(t("style_titles"),t("style_title_rules"),10,C.Amber)
+		local none=UI.gameButton(self.body,"NoTitle",t("title_none"),"secondary",function()self.actions.style("EQUIP_TITLE","")end);none.Size=UDim2.new(1,-4,0,44);none.LayoutOrder=11
+		UI.enabled(none,p.equippedTitle~=""and not model.stylePending)
+		for i,id in Catalog.TITLES do
+			local row=self:paragraph(t("title_"..id),t("title_"..id.."_hint"),12+i,if earned[id]then C.Amber else C.Muted)
+			local button=UI.gameButton(row,"EquipTitle",if p.equippedTitle==id then t("style_current")elseif earned[id]then t("style_equip")else t("style_locked"),"secondary",function()self.actions.style("EQUIP_TITLE",id)end)
+			button.Size=UDim2.new(1,0,0,44);button.LayoutOrder=3;button.TextSize=15
+			UI.enabled(button,earned[id]==true and p.equippedTitle~=id and not model.stylePending)
+		end
 	elseif mode=="CONFIRM" then
 		self.heading.Text=t("leave_title")
 		self:paragraph(t("leave_title"),t("leave_body"),1,C.Amber)

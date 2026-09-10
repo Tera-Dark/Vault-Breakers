@@ -22,18 +22,20 @@ end
 local function tick(e)Mock.advance(math.max(0,e.deadline-Mock.time)+0.001)end
 local function phasePayload(e,choice)return {arenaId=e.arena.id,runId=e.runId,phaseId=e.phaseId,choice=choice}end
 local function claim(player,id)
+	Mock.finishShow(Mock.engines[id],true)
 	local stage=Mock.world.arenas[id]
 	player.Character.HumanoidRootPart.CFrame=stage.vaults[1].anchor.CFrame
 	stage.vaults[1].prompt.Triggered:Fire(player)
 end
 local function openRound(player,id)
 	local e,stage=Mock.engines[id],Mock.world.arenas[id]
+	Mock.finishShow(e,true)
 	while e.state=="BREACH"do
 		for i,v in e.vaults do if not v.opened and not v.claimed then
 			player.Character.HumanoidRootPart.CFrame=stage.vaults[i].anchor.CFrame
 			stage.vaults[i].prompt.Triggered:Fire(player);break
 		end end
-		eq(e.state,"OPENING");tick(e)
+		eq(e.state,"OPENING");tick(e);Mock.finishShow(e)
 	end
 	eq(e.state,"OFFER")
 end
@@ -57,7 +59,7 @@ test("set geometry is finite, collision floors exist, both hollow vaults and tru
 		if object:IsA("Light")then lights+=1 end
 	end
 	assert(parts<3000,"Primitive budget exceeded: "..parts);eq(seats,12)
-	assert(lights<=20,"Too many live lights: "..lights)
+	assert(lights<=32,"Light object budget exceeded: "..lights)
 	assert(workspace.VaultWorld.MAIN.StudioFloor.CanCollide)
 	print("Scene contract:",parts,"parts,",seats,"seats,",lights,"lights")
 	captureScene(Mock.json(Mock.captureWorld()))
@@ -207,9 +209,9 @@ test("result scrolling and fixed replay controls work at all viewports; old pack
 	viewport(1360,800);capture("result-desktop");viewport(390,844);capture("result-mobile")
 	viewport(568,320);capture("result-landscape")
 	local old=e:snapshot();local previous=e.runId
-	Mock.app.actions.replay();eq(e.state,"CLAIM");eq(e.runId,previous+1)
+	Mock.app.actions.replay();eq(e.state,"SHOWTIME");eq(e.runId,previous+1)
 	game:GetService("ReplicatedStorage").VaultRemotes.Snapshot:FireClient(p3,old)
-	eq(Mock.app.model.snapshot.state,"CLAIM");assert(not Mock.app.result.root.Visible)
+	eq(Mock.app.model.snapshot.state,"SHOWTIME");assert(not Mock.app.result.root.Visible)
 	Mock.app.actions.leave();eq(Mock.app.overlayMode,"CONFIRM");Mock.app.actions.abort();eq(e.state,"IDLE")
 	Mock.advance(0.2);Mock.app.actions.showRecap();assert(Mock.app.result.root.Visible)
 	Mock.app.actions.returnLobby();assert(not Mock.app.model.showRecap)

@@ -132,7 +132,8 @@ backgrounds={}
 def background(w,h,kind):
     key=(w,h,kind)
     if key not in backgrounds:
-        if kind=='lounge':
+        if kind=='flat':backgrounds[key]=Image.new('RGBA',(w,h),(12,18,27,255))
+        elif kind=='lounge':
             # A representative angle from the real lounge; NOT a PlayerModule camera simulation.
             backgrounds[key]=render_scene(w,h,[29,21,54],[5,6,-41],67).convert('RGBA')
         else:backgrounds[key]=main.resize((w,h),Image.Resampling.LANCZOS).convert('RGBA')

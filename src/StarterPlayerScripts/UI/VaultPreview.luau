@@ -16,6 +16,7 @@ local function builder(parent,cf,scale)
 		local part=Instance.new("Part")
 		part.Name=name;part.Size=size*s;part.CFrame=cf*CFrame.new(position*s)*(rotation or CFrame.new())
 		part.Color=color;part.Material=Enum.Material.SmoothPlastic
+		if name=="Wheel"or name=="WheelSpoke"or name=="Hub"then part:SetAttribute("MenuOriginalTone",color)end
 		part.Anchored=true;part.CanCollide=false;part.CanTouch=false;part.CanQuery=false;part.CastShadow=false
 		if shape then part.Shape=shape end
 		part.Parent=parent;return part
@@ -110,6 +111,14 @@ function Preview.prepare(viewport)
 		breaker(model,CFrame.new(1.7,0,1)*CFrame.Angles(0,-.25,0),teal,.8)
 		vault(model,CFrame.new(3.9,0,3.5),gold,.43)
 		camera.CFrame=CFrame.lookAt(Vector3.new(-5,4.8,-8.6),Vector3.new(0,2.8,0))
+	end
+end
+function Preview.style(viewport,id,item)
+	if not viewport:GetAttribute("Prepared")or viewport:GetAttribute("Style")==id then return end
+	viewport:SetAttribute("Style",id)
+	for _,object in viewport:GetDescendants()do
+		local original=object:GetAttribute("MenuOriginalTone")
+		if original then object.Color=if item and item.rgb then Color3.fromRGB(table.unpack(item.rgb))else original end
 	end
 end
 return Preview

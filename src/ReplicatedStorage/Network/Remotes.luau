@@ -1,7 +1,7 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local names = { "Action", "Snapshot", "Directory", "Profile", "Notice" }
+local names = { "Action", "Snapshot", "Directory", "Profile", "Notice", "Reaction" }
 local folder: Folder
 if RunService:IsServer() then
 	local old = ReplicatedStorage:FindFirstChild("VaultRemotes")

@@ -29,16 +29,19 @@ local function engine(audience, seed)
 end
 local function start(e, heat)
 	assert(e:start({ id = 1, name = "Breaker", heat = heat or 1 }, 100))
+	if e.state=="SHOWTIME"then assert(e:skipShowtime(1,100))end
 	assert(e:claim(1, 1, 101))
 end
 local function advance(e) e:step(e.deadline) end
+local function presentations(e)while e.state=="BREACH_REACT"or e.state=="OFFER_ROLL"do e:step(e.deadline)end end
 local function openRound(e)
+	presentations(e)
 	while e.state == "BREACH" do
 		for _, v in e.vaults do
 			if not v.claimed and not v.opened then assert(e:breach(1, v.id, e.deadline - 1)); break end
 		end
 		equal(e.state, "OPENING")
-		advance(e)
+		advance(e);presentations(e)
 	end
 	equal(e.state, "OFFER")
 end
@@ -61,7 +64,7 @@ test("12 -> 8 -> 5 -> 3 -> 2, four offers, then reachable KEEP/SWAP", function()
 	equal(e.state,"FINAL_CHOICE"); assert(e.finalId and e.finalId ~= e.claimId)
 end)
 test("wrong player, malformed indices, claimed doors and double breach rejected",function()
-	local e=engine(); assert(e:start({id=1,name="B"},0))
+	local e=engine(); assert(e:start({id=1,name="B"},0));assert(e:skipShowtime(1,0))
 	assert(not e:claim(2,1,1)); assert(not e:claim(1,0,1)); assert(not e:claim(1,1.5,1)); assert(not e:claim(1,0/0,1))
 	assert(e:claim(1,1,1)); assert(not e:breach(1,1,2)); assert(not e:breach(2,2,2))
 	assert(e:breach(1,2,2)); assert(not e:breach(1,3,2)); advance(e)
@@ -70,7 +73,7 @@ end)
 test("last breach locks input before delayed offer; no extra openings / duplicate offers",function()
 	local e=engine();start(e)
 	for id=2,5 do
-		assert(e:breach(1,id,e.deadline-1)); assert(not e:breach(1,6,e.deadline-1)); advance(e)
+		assert(e:breach(1,id,e.deadline-1)); assert(not e:breach(1,6,e.deadline-1)); advance(e);presentations(e)
 	end
 	equal(#e:snapshot().remaining,8); equal(e.state,"OFFER")
 	assert(not e:breach(1,6,e.deadline-1))
@@ -128,7 +131,7 @@ test("final audience poll uses KEEP/SWAP, not stale Extract/Push",function()
 	assert(not e:vote(2,"PUSH",e.deadline-1));assert(e:vote(2,"SWAP",e.deadline-1));equal(e:snapshot().poll.kind,"FINAL")
 end)
 test("AFK and disconnect free the stage; stale phase and run requests cannot act",function()
-	local e=engine();e:start({id=1,name="B"},0);local run,phase=e.runId,e.phaseId
+	local e=engine();e:start({id=1,name="B"},0);e:skipShowtime(1,0);local run,phase=e.runId,e.phaseId
 	advance(e);equal(e.state,"IDLE");assert(not e:matches(run,phase))
 	start(e);assert(not e:matches(run,phase));e:breach(1,2,102);e:playerLeft(1,102.1)
 	equal(e.state,"IDLE");e:step(1000);equal(e.state,"IDLE");equal(#e.vaults,0)
@@ -179,7 +182,7 @@ test("server board records only real completions, ranks base rewards, and remain
 	equal(board.rows()[1].userId,24);equal(board.rows()[2].userId,25)
 end)
 test("deadlines win over late Claim, breach, EXTRACT, final SWAP and lifeline input",function()
-	local e=engine();e:start({id=1,name="B"},0)
+	local e=engine();e:start({id=1,name="B"},0);e:skipShowtime(1,0)
 	assert(not e:claim(1,1,e.deadline));equal(e.state,"IDLE")
 	start(e);assert(not e:breach(1,2,e.deadline));equal(e.state,"IDLE")
 	start(e);openRound(e);assert(not e:decide(1,"EXTRACT",e.deadline));equal(e.state,"TRANSITION");assert(e.decisions[1].automatic)

@@ -7,6 +7,7 @@ local C = require(ReplicatedStorage.VaultBreakers.Config.VisualConfig)
 local Numbers = require(ReplicatedStorage.VaultBreakers.Config.RewardPool)
 local G = require(script.Parent.Geometry)
 local Vault = require(script.Parent.VaultModel)
+local ShowSet = require(script.Parent.ShowSet)
 local StageBuilder = {}
 local Arena = {}
 Arena.__index = Arena
@@ -220,10 +221,15 @@ end
 
 function Arena:update(snapshot)
 	local state = snapshot.state
+	local rig=self.root:FindFirstChild("ShowRig");local entrance=rig and rig:FindFirstChild("ContestantScreen")
+	if entrance then
+		entrance.Graphics.Copy.Text=if snapshot.breakerId then "CONTESTANT ON AIR\n"..snapshot.breakerName else "YOUR STAGE AWAITS"
+		entrance.Graphics.Portrait.Image=if snapshot.breakerId then "rbxthumb://type=AvatarHeadShot&id="..snapshot.breakerId.."&w=150&h=150"else ""
+	end
 	for id, vault in self.vaults do
 		local data = snapshot.vaults[id]
-		vault.prompt.Enabled = (state == "CLAIM" or state == "BREACH") and data ~= nil and not data.claimed and not data.opened
-		vault.prompt.ActionText = if state == "CLAIM" then "CLAIM / 锁定底牌" else "BREACH / 开启排除"
+		vault.prompt.Enabled = ((state == "CLAIM" or state == "BREACH") and data ~= nil and not data.claimed and not data.opened) or (state=="FINAL_CHOICE" and (id==snapshot.claimId or id==snapshot.finalId))
+		vault.prompt.ActionText = if state=="FINAL_CHOICE" then (if id==snapshot.claimId then "KEEP / 保留底牌" else "SWAP / 交换金库") elseif state == "CLAIM" then "CLAIM / 锁定底牌" else "BREACH / 开启排除"
 	end
 	self.leverPrompt.Enabled = snapshot.lifelineAvailable
 	self.leverLamp.Color = if snapshot.lifelineAvailable then C.Amber else C.Line
@@ -236,6 +242,9 @@ function Arena:update(snapshot)
 	self.onAirLabel.TextColor3 = if state == "IDLE" then C.Muted else C.Amber
 	local copy = {
 		IDLE = "THE CURATOR\n\nKNOW WHEN TO LEAVE.",
+		SHOWTIME = "CONTESTANT ON AIR\n\n"..snapshot.breakerName,
+		BREACH_REACT = "ONE VALUE ELIMINATED.\n\nWATCH THE BOARD.",
+		OFFER_ROLL = "CALCULATING THE OFFER...",
 		CLAIM = "YOUR CLAIM. YOUR CALL.\n\nCHOOSE ONE VAULT.",
 		BREACH = string.format("ROUND %02d\n\nOPEN %d MORE VAULTS", snapshot.round, snapshot.quota - snapshot.breached),
 		OPENING = "LOCKS RELEASED.\n\nONE POSSIBILITY LEAVES.",
@@ -346,6 +355,8 @@ function StageBuilder.build()
 	for _, object in Workspace:GetDescendants() do
 		if object:IsA("SpawnLocation") and object ~= lounge.spawnLocation then object.Enabled = false end
 	end
-	return { root = root, arenas = arenas, lobby = lounge, cameras = cameras }
+	local world={ root = root, arenas = arenas, lobby = lounge, cameras = cameras }
+	ShowSet.attach(world)
+	return world
 end
 return StageBuilder
